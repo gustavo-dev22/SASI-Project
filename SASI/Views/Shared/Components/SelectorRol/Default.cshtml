@@ -1,0 +1,10 @@
+﻿@model List<SASI.Dominio.Modelo.Rol>
+
+<form method="post" asp-controller="Cuenta" asp-action="SeleccionarRol" class="d-inline">
+    <select name="rolId" class="form-select form-select-sm" onchange="mostrarSpinnerYEnviar(this.form)">
+        @foreach (var rol in Model)
+        {
+            <option value="@rol.IdRol" selected="@(rol.IdRol == (int?)ViewBag.SelectedRolId ? "selected" : null)">@rol.Nombre</option>
+        }
+    </select>
+</form>

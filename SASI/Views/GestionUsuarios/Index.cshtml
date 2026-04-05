@@ -1,0 +1,1074 @@
+﻿@using SASI.Infraestructura.Identity
+
+@model List<ApplicationUser>
+
+@{
+    ViewBag.Title = "Gestión de Usuarios";
+}
+
+<style>
+    .form-switch .form-check-input:checked {
+        background-color: #198754; /* Verde Bootstrap (success) */
+
+        border-color: #198754;
+    }
+
+    .form-switch .form-check-input:not(:checked) {
+        background-color: #dc3545; /* Rojo Bootstrap (danger) */
+        border-color: #dc3545;
+    }
+ZUMH
+    .form-switch .form-check-input {
+        width: 2.5em;
+        height: 1.5em;
+        cursor: pointer;
+    }
+</style>
+
+<form id="formBusqueda" class="row align-items-end mb-5 mt-5">
+    <div class="col-md-9">
+        <label for="filtro" class="form-label"><b>Apellido o Nombre:</b></label>
+        <div class="input-group">
+            <input type="text" name="filtro" id="filtro" class="form-control" maxlength="100" />
+            <button type="submit" class="btn btn-primary" id="btnBuscar">Buscar</button>
+        </div>
+    </div>
+
+    <div class="col-md-3 d-flex justify-content-end align-items-end">
+        <button type="button" class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#modalAgregarUsuario">
+            <i class="bi bi-person-plus"></i> Agregar Usuario
+        </button>
+
+        <button type="button" class="btn btn-warning ms-2" data-bs-toggle="modal" data-bs-target="#modalCargaMasiva">
+            <i class="bi bi-upload"></i> Carga Masiva
+        </button>
+    </div>
+</form>
+
+
+<div class="modal fade" id="modalAgregarUsuario" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formNuevoUsuario">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabel">Nuevo Usuario</h5>
+                </div>
+                <div class="modal-body">
+
+                    <input type="hidden" id="userId" name="Id" />
+
+                    <div class="mb-3">
+                        <label for="nombreCompleto" class="form-label">Nombre completo</label>
+                        <input type="text" class="form-control" id="nombreCompleto" name="NombreCompleto" style="text-transform:uppercase;" >
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Nombre de usuario</label>
+                        <input type="text" class="form-control" id="username" name="UserName" >
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Correo electrónico</label>
+                        <input type="email" class="form-control" id="email" name="Email" >
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="oficinaId" class="form-label">Oficina</label>
+                        <select class="form-select" id="oficinaId" name="OficinaId">
+                            <option value="">Seleccione una oficina</option>
+                        </select>
+                    </div>
+
+                    <div id="camposEstado" style="display: none;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="bloqueado" name="Bloqueado" >
+                            <label class="form-check-label" for="bloqueado">Bloqueado</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="activo" name="Activo" >
+                            <label class="form-check-label" for="activo">Activo</label>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Registrar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAsignarSistema" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalAsignarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formAsignarSistema">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAsignarLabel">Asignar Sistema y Rol</h5>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="usuarioIdAsignar" name="UsuarioId" />
+
+                    <div class="mb-3">
+                        <label for="sistemaSelect" class="form-label">Sistema:</label>
+                        <select id="sistemaSelect" class="form-select" required></select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="rolSelect" class="form-label">Rol:</label>
+                        <select id="rolSelect" class="form-select" required></select>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="esPrincipalCheck" name="EsPrincipal">
+                        <label class="form-check-label" for="esPrincipalCheck">
+                            ¿Es principal?
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSistemasUsuario" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="sistemasLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sistemasLabel">Sistemas asignados</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-bordered">
+                    <thead class="table-header-custom">
+                        <tr>
+                            <th style="text-align:center; vertical-align:middle">#</th>
+                            <th style="text-align:center; vertical-align:middle">Nombre del Sistema</th>
+                            <th style="text-align:center; vertical-align:middle">Rol</th>
+                            <th style="text-align:center; vertical-align:middle">Fecha Asignación</th>
+                            <th style="text-align:center; vertical-align:middle">Activo</th>
+                            <th style="text-align:center; vertical-align:middle">Acciones</th>
+                            <th style="text-align:center; vertical-align:middle">Principal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaSistemasUsuario">
+                        <!-- contenido dinámico -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Carga Masiva -->
+<div class="modal fade" id="modalCargaMasiva" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Carga Masiva de Usuarios</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body">
+                <form id="formCargaMasiva" onsubmit="return false;">
+                    <div class="mb-3">
+                        <label for="inputExcel" class="form-label">Seleccionar archivo Excel (.xls, .xlsx)</label>
+                        <input id="inputExcel" type="file" accept=".xls,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="form-control" />
+                    </div>
+
+                    <div class="mb-2">
+                        <small id="cantidadRegistros" class="text-muted">No hay registros cargados.</small>
+                    </div>
+
+                    <div class="table-responsive" style="max-height:400px; overflow:auto;">
+                        <table id="tablaPreview" class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nombre completo</th>
+                                    <th>Nombre usuario</th>
+                                    <th>Email</th>
+                                    <th>Nombre oficina</th>
+                                    <th>Estado</th>
+                                    <th>Observaciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyPreview">
+                                <tr><td colspan="7" class="text-center">No hay datos precargados.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginador -->
+                    <nav>
+                        <ul id="paginador" class="pagination justify-content-center"></ul>
+                    </nav>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button id="btnProcesar" type="button" class="btn btn-primary">
+                    <i class="bi bi-check2-circle"></i> Procesar
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="resultadoUsuarios" style="width:100%">
+    @await Html.PartialAsync("_TablaUsuarios", Model)
+</div>
+
+@section Scripts {
+    <script>
+
+        function cargarOficinas(selectedId = "") {
+            return $.get('@Url.Action("Listar", "Oficina")', function (data) {
+                let $select = $("#oficinaId");
+                $select.empty();
+                $select.append('<option value="">Seleccione una oficina</option>');
+
+                data.forEach(oficina => {
+                    let selected = oficina.idOficina == selectedId ? "selected" : "";
+                    $select.append(`<option value="${oficina.idOficina}" ${selected}>${oficina.nombre}</option>`);
+                });
+
+                $select.trigger('change');
+            });
+        }
+
+        let modoEdicion = false;
+
+        function editarUsuario(id) {
+            modoEdicion = true;
+
+            $.get('@Url.Action("Obtener", "GestionUsuarios")', { id }, function (data) {
+                if (!data) {
+                    Swal.fire("Error", "No se encontró el usuario", "error");
+                    return;
+                }
+
+                // Cargar datos
+                $("#userId").val(data.id);
+                $("#nombreCompleto").val(data.nombreCompleto);
+                $("#username").val(data.userName);
+                $("#email").val(data.email);
+                $("#bloqueado").prop("checked", data.bloqueado);
+                $("#activo").prop("checked", data.activo);
+
+                cargarOficinas(data.oficinaId).then(() => {
+                    $("#oficinaId").val(data.oficinaId);
+                });
+
+                // Mostrar campos de estado
+                $("#camposEstado").show();
+
+                // Cambiar título y botón
+                $("#modalLabel").text("Editar Usuario");
+                $("#formNuevoUsuario button[type=submit]").text("Guardar Cambios");
+
+                // Mostrar modal
+                $("#modalAgregarUsuario").modal("show");
+            });
+        }
+
+        function abrirModalAsignacion(usuarioId) {
+            $("#usuarioIdAsignar").val(usuarioId);
+            $("#rolSelect").empty().append('<option value="">Seleccione un sistema</option>');
+
+            $.get('@Url.Action("ObtenerSistemas", "GestionUsuarios")', function (data) {
+                let sistemaSelect = $("#sistemaSelect");
+                sistemaSelect.empty().append('<option value="">Seleccione</option>');
+                data.forEach(s => {
+                    sistemaSelect.append(`<option value="${s.idSistema}">${s.nombre}</option>`);
+                });
+            });
+
+            $("#modalAsignarSistema").modal("show");
+        }
+
+        let idUsuarioSeleccionado = null;
+
+        function verSistemas(userId) {
+            idUsuarioSeleccionado = userId;
+            $.get('@Url.Action("ListarSistemasPorUsuario", "GestionUsuarios")', { id: userId }, function (sistemas) {
+                let html = "";
+
+                if (sistemas.length === 0) {
+                    html = `<tr><td colspan="7" class="text-center">No se encontraron sistemas asignados.</td></tr>`;
+                } else {
+                    // Agrupar por nombreSistema
+                    const sistemasAgrupados = sistemas.reduce((acc, s) => {
+                        if (!acc[s.nombreSistema]) acc[s.nombreSistema] = [];
+                        acc[s.nombreSistema].push(s);
+                        return acc;
+                    }, {});
+
+                    let contador = 1;
+
+                    for (const nombreSistema in sistemasAgrupados) {
+                        html += `
+                            <tr class="table-secondary">
+                                <td colspan="7" class="fw-bold">${nombreSistema}</td>
+                            </tr>
+                        `;
+
+                        sistemasAgrupados[nombreSistema].forEach(s => {
+                            html += `
+                                <tr>
+                                    <td style='vertical-align:middle'>${contador++}</td>
+                                    <td style='vertical-align:middle'>${s.nombreSistema}</td>
+                                    <td style='text-align:center; vertical-align:middle'>${s.nombreRol}</td>
+                                    <td style='text-align:center; vertical-align:middle'>${s.fechaAsignacion}</td>
+                                    <td style='text-align:center; vertical-align:middle'>
+                                        <input type="checkbox" disabled id="estado-visual-${s.sistemaId}-${s.rolId}" ${s.activo ? "checked" : ""} />
+                                    </td>
+                                    <td class="text-center" style='vertical-align:middle'>
+                                        <div class="form-check form-switch d-flex justify-content-center">
+                                            <input class="form-check-input" type="checkbox"
+                                                   role="switch"
+                                                   id="switch-${s.sistemaId}-${s.rolId}"
+                                                   data-bs-toggle="tooltip"
+                                                   data-bs-placement="top"
+                                                   title="${s.activo ? 'Activo' : 'Inactivo'}"
+                                                   onchange="toggleSistemaActivo('${userId}', ${s.sistemaId}, ${s.rolId}, this.checked)"
+                                                   ${s.activo ? 'checked' : ''}>
+                                        </div>
+                                    </td>
+                                    <td style='text-align:center; vertical-align:middle'>
+                                        <input type="radio"
+                                               name="principal_${s.sistemaId}"
+                                               class="radio-principal"
+                                               data-sistema-id="${s.sistemaId}"
+                                               data-rol-id="${s.rolId}"
+                                               ${s.esPrincipal ? 'checked' : ''}
+                                               ${!s.activo ? 'disabled' : ''} />
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                }
+
+                $("#tablaSistemasUsuario").html(html);
+
+                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+
+                $("#modalSistemasUsuario").modal("show");
+            }).fail(() => {
+                Swal.fire("Error", "No se pudieron cargar los sistemas asignados.", "error");
+            });
+        }
+
+        function toggleSistemaActivo(usuarioId, sistemaId, rolId, nuevoEstado) {
+            const mensaje = nuevoEstado
+                ? "¿Deseas activar este sistema para el usuario?"
+                : "¿Deseas desactivar este sistema para el usuario?";
+
+            Swal.fire({
+                title: "Confirmación",
+                text: mensaje,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Sí",
+                cancelButtonText: "Cancelar",
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then(result => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '@Url.Action("CambiarEstadoSistema", "GestionUsuarios")',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ usuarioId: usuarioId, sistemaId: sistemaId, rolId: rolId, activo: nuevoEstado }),
+                        success: function (response) {
+                            Swal.fire({
+                                icon: response.success ? "success" : "error",
+                                title: response.message,
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                confirmButtonText: "Aceptar"
+                            });
+                            
+                            if (response.success) {
+                                // Actualizar tooltip dinámicamente sin recargar la tabla
+                                const switchEl = document.querySelector(`#switch-${sistemaId}-${rolId}`);
+                                const newTitle = nuevoEstado ? "Activo" : "Inactivo";
+
+                                if (switchEl) {
+                                    // 1. Obtener y ocultar instancia anterior
+                                    const existingTooltip = bootstrap.Tooltip.getInstance(switchEl);
+                                    if (existingTooltip) {
+                                        existingTooltip.hide();
+                                        existingTooltip.dispose();
+                                    }
+
+                                    // 2. Limpiar completamente hover/focus
+                                    switchEl.blur(); // quitar foco
+                                    const leaveEvent = new Event('mouseleave');
+                                    switchEl.dispatchEvent(leaveEvent);
+
+                                    // 3. Limpiar atributos del tooltip anterior
+                                    switchEl.removeAttribute("title");
+                                    switchEl.removeAttribute("data-bs-original-title");
+
+                                    // 4. Asignar nuevo título y tooltip
+                                    setTimeout(() => {
+                                        switchEl.setAttribute("title", newTitle);
+                                        switchEl.setAttribute("data-bs-original-title", newTitle);
+
+                                        // 5. Recrear el tooltip
+                                        new bootstrap.Tooltip(switchEl);
+                                    }, 50);
+                                }
+
+                                // Actualizar el checkbox de visualización
+                                const visualCheckbox = document.querySelector(`#estado-visual-${sistemaId}-${rolId}`);
+                                if (visualCheckbox) {
+                                    visualCheckbox.checked = nuevoEstado;
+                                }
+
+                                // Habilitar o deshabilitar el radio principal correspondiente
+                                const radio = document.querySelector(`input.radio-principal[data-sistema-id='${sistemaId}'][data-rol-id='${rolId}']`);
+                                if (radio) {
+                                    radio.disabled = !nuevoEstado;
+
+                                    // Si fue desactivado y estaba marcado, lo desmarcamos
+                                    if (!nuevoEstado && radio.checked) {
+                                        radio.checked = false;
+                                    }
+                                }
+                            }
+                            else {
+                                // Revertir el checkbox si hubo error
+                                verSistemas(usuarioId);
+                            }
+                        }
+                    });
+                } else {
+                    // Revertir el checkbox si se canceló
+                    verSistemas(usuarioId);
+                }
+            });
+        }
+
+        $("#sistemaSelect").on("change", function () {
+            let sistemaId = $(this).val();
+            if (!sistemaId) return;
+
+            $.get('@Url.Action("ObtenerRolesPorSistema", "GestionUsuarios")', { sistemaId }, function (roles) {
+                let rolSelect = $("#rolSelect");
+                rolSelect.empty().append('<option value="">Seleccione</option>');
+                roles.forEach(r => {
+                    rolSelect.append(`<option value="${r.idRol}">${r.nombre}</option>`);
+                });
+            });
+        });
+
+        $("#formAsignarSistema").on("submit", function (e) {
+            e.preventDefault();
+
+            const datos = {
+                UsuarioId: $("#usuarioIdAsignar").val(),
+                SistemaId: $("#sistemaSelect").val(),
+                RolId: $("#rolSelect").val(),
+                EsPrincipal: $("#esPrincipalCheck").is(":checked")
+            };
+
+            if (!datos.SistemaId || !datos.RolId) {
+                Swal.fire("Error", "Debe seleccionar sistema y rol.", "warning");
+                return;
+            }
+
+            $.post('@Url.Action("AsignarSistemaARol", "GestionUsuarios")', datos, function (response) {
+                Swal.fire({
+                    icon: response.success ? "success" : "error",
+                    title: response.message,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(() => {
+                    if (response.success) {
+                        $("#modalAsignarSistema").modal("hide");
+                    }
+                });
+            });
+        });
+
+        $('#modalAsignarSistema').on('hidden.bs.modal', function () {
+            $('#esPrincipalCheck').prop('checked', false);
+        });
+
+        $(document).on('change', '.radio-principal', function () {
+            const sistemaId = $(this).data('sistema-id');
+            const rolId = $(this).data('rol-id');
+
+            // Si deseas guardar automáticamente:
+            $.ajax({
+                url: '/SASI/GestionUsuarios/ActualizarRolPrincipal', // tu endpoint real
+                type: 'POST',
+                data: {
+                    sistemaId: sistemaId,
+                    usuarioId: idUsuarioSeleccionado, // pásalo al cargar el modal
+                    rolPrincipalId: rolId
+                },
+                success: function (respuesta) {
+                    Swal.fire('Actualizado', respuesta.mensaje, 'success');
+                },
+                error: function () {
+                    Swal.fire('Error', 'No se pudo actualizar el rol principal', 'error');
+                }
+            });
+        });
+
+        $(document).ready(function () {
+
+            cargarOficinas();
+
+            $("#oficinaId").select2({
+                placeholder: "Seleccione una oficina",
+                allowClear: true,
+                width: "100%",
+                dropdownParent: $('#modalAgregarUsuario'),
+                language: {
+                    noResults: function () {
+                        return "No se encontraron resultados";
+                    }
+                }
+            });
+
+            $('#oficinaId').on('select2:open', function () {
+                setTimeout(() => {
+                    document.querySelector('.select2-container--open .select2-search__field').focus();
+                }, 100);
+            });
+
+            // Filtrar caracteres no permitidos y aplicar formato
+            $("#filtro").on("input", function () {
+                let valor = $(this).val()
+                    .toUpperCase()               // mayúsculas
+                    .replace(/[^A-ZÑÁÉÍÓÚÜ\s]/g, '')  // solo letras y espacios (incluye acentos y Ñ)
+                    .replace(/\s+/g, ' ')         // espacios múltiples por uno
+                    .replace(/^\s/, '');          // sin espacio inicial
+
+                $(this).val(valor);
+            });
+
+            $("#formBusqueda").on("submit", function (e) {
+                e.preventDefault();
+
+                let filtro = $("#filtro").val()
+                    .toUpperCase()
+                    .replace(/[^A-ZÑÁÉÍÓÚÜ\s]/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                $("#filtro").val(filtro);
+
+                if (filtro === "") {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Advertencia",
+                        text: "Debe ingresar un apellido o nombre para buscar.",
+                        confirmButtonText: "Ok",
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
+                    return;
+                }
+
+                if (filtro.length < 3) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "Advertencia",
+                        text: "Debe ingresar al menos 3 caracteres.",
+                        confirmButtonText: "Ok",
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
+                    return;
+                }
+
+                // Enviar búsqueda al servidor
+                $.post('@Url.Action("Buscar", "GestionUsuarios")', { filtro }, function (data) {
+                    $("#resultadoUsuarios").html(data);
+                }).fail(function () {
+                    Swal.fire("Error", "Ocurrió un error al buscar usuarios.", "error");
+                });
+            });
+
+            $("#formNuevoUsuario").on("submit", function (e) {
+                e.preventDefault();
+
+                const datos = {
+                    Id: $("#userId").val(),
+                    NombreCompleto: $("#nombreCompleto").val().trim().toUpperCase(),
+                    UserName: $("#username").val().trim(),
+                    Email: $("#email").val().trim(),
+                    OficinaId: $("#oficinaId").val(),
+                    Bloqueado: $("#bloqueado").is(":checked"),
+                    Activo: $("#activo").is(":checked")
+                };
+
+                if (!datos.NombreCompleto || !datos.UserName || !datos.Email || !datos.OficinaId) {
+                    Swal.fire({
+                        title: "Campos requeridos", 
+                        text: "Complete todos los campos.", 
+                        icon: "warning",
+                        confirmButtonText: 'OK',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
+                    return;
+                }
+
+                const url = modoEdicion
+                            ? '@Url.Action("Editar", "GestionUsuarios")'
+                            : '@Url.Action("Crear", "GestionUsuarios")';
+
+                Swal.fire({
+                    title: 'Confirmación de guardado',
+                    text: "¿Está seguro de agregar los datos ingresados?",
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Aceptar',
+                    cancelButtonText: 'Cancelar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            title: 'Procesando...',
+                            text: 'Por favor, espera un momento.',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+
+                        setTimeout(() => {
+                            $.post(url, datos, function (response) {
+                                Swal.fire({
+                                  icon: response.success ? "success" : "error",
+                                  title: response.message,
+                                  confirmButtonText: "Aceptar",
+                                  allowOutsideClick: false,
+                                  allowEscapeKey: false
+                                }).then((result) => {
+                                  if (response.success && result.isConfirmed) {
+                                    $("#modalAgregarUsuario").modal("hide");
+                                    location.reload();
+                                  }
+                                });
+                            }).fail(() => {
+                                Swal.fire({
+                                  icon: "error",
+                                  title: "Error",
+                                  text: "Ocurrió un error al registrar el usuario.",
+                                  confirmButtonText: "Aceptar",
+                                  allowOutsideClick: false,
+                                  allowEscapeKey: false
+                                });
+                            });
+                        }, 3000);
+                    }
+                });
+            });
+
+            $('#modalAgregarUsuario').on('shown.bs.modal', function () {
+                if (!modoEdicion) {
+                    $('#nombreCompleto').trigger('focus');
+                }
+            });
+
+            // Resetear modal al cerrarse
+            $('#modalAgregarUsuario').on('hidden.bs.modal', function () {
+                modoEdicion = false;
+                $("#modalLabel").text("Nuevo Usuario");
+                $("#formNuevoUsuario button[type=submit]").text("Registrar");
+                $("#formNuevoUsuario")[0].reset();
+                $("#camposEstado").hide();
+
+                $('#oficinaId').val('').trigger('change');
+            });
+        });
+
+        /* ---------- Config ---------- */
+        const PAGE_SIZE = 10;
+
+        /* Estados globales */
+        let registros = [];
+        let paginaActual = 1;
+        let currentXhr = null;
+
+        /* elementos */
+        const modalEl = document.getElementById('modalCargaMasiva');
+        const inputExcel = document.getElementById('inputExcel');
+        const tbodyPreview = document.getElementById('tbodyPreview');
+        const paginador = document.getElementById('paginador');
+        const cantidadRegistros = document.getElementById('cantidadRegistros');
+        const btnProcesar = document.getElementById('btnProcesar');
+
+        // Inicial: deshabilitar procesar si no hay datos
+        btnProcesar.disabled = true;
+
+        /* ---------- Al cerrar el modal: limpiar TODO ---------- */
+        if (modalEl) {
+          modalEl.addEventListener('hidden.bs.modal', () => {
+            // 1) Abort any pending upload/request
+            try {
+              if (currentXhr && currentXhr.readyState !== 4) {
+                currentXhr.abort();
+              }
+            } catch (e) {
+              console.warn('No se pudo abortar xhr:', e);
+            }
+            currentXhr = null;
+
+            // 2) Cerrar cualquier swal abierto
+            try {
+              if (Swal && Swal.isVisible && Swal.isVisible()) {
+                Swal.close();
+              }
+            } catch (e) { /* ignore */ }
+
+            // 3) Resetear inputs y estado JS
+            if (inputExcel) inputExcel.value = '';
+            registros = [];
+            paginaActual = 1;
+
+            // 4) Resetear la UI (tabla, contador, paginador)
+            if (tbodyPreview) {
+              tbodyPreview.innerHTML = `<tr><td colspan="7" class="text-center">No hay datos precargados.</td></tr>`;
+            }
+            if (cantidadRegistros) cantidadRegistros.innerText = 'No hay registros cargados.';
+            if (paginador) paginador.innerHTML = '';
+
+            // 5) Deshabilitar el botón procesar porque ya no hay registros
+            if (btnProcesar) btnProcesar.disabled = true;
+          });
+        }
+
+        function normalizarTexto(texto) {
+          return texto
+            .normalize("NFD")                   // separa letras y acentos
+            .replace(/[\u0300-\u036f]/g, "")    // elimina tildes
+            .replace(/ñ/g, "n")                 // reemplaza ñ
+            .replace(/Ñ/g, "N");                // reemplaza Ñ
+        }
+
+        /* ---------- Leer archivo ---------- */
+        inputExcel.addEventListener('change', async (e) => {
+          const file = e.target.files[0];
+          registros = [];
+          paginaActual = 1;
+
+          if (!file) {
+            renderTabla();
+            return;
+          }
+
+          // Validar extensión basica
+          const name = file.name.toLowerCase();
+          if (!name.endsWith('.xls') && !name.endsWith('.xlsx')) {
+            Swal.fire('Error', 'Formato no soportado. Suba un archivo .xls o .xlsx', 'error');
+            inputExcel.value = '';
+            return;
+          }
+
+          try {
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+            json.forEach((fila, idx) => {
+              const nombre = (fila['VC_PERSONAL_NOMBRES'] || '').toString().trim();
+              const apellidoPaterno = (fila['VC_PERSONAL_PATERNO'] || '').toString().trim();
+              const apellidoMaterno = (fila['VC_PERSONAL_MATERNO'] || '').toString().trim();
+
+              const nombreCompleto = `${nombre} ${apellidoPaterno} ${apellidoMaterno}`.trim();
+              // 🔹 Normalizamos usuario y email
+              const usuarioBase = (nombre.charAt(0) + apellidoPaterno).toLowerCase().replace(/\s+/g, '');
+              const usuario = normalizarTexto(usuarioBase);
+              const email = normalizarTexto(usuario) + "@@gmail.com";
+              const oficina = (fila['VC_PERSONAL_DEPENDENCIA'] || '').toString().trim();
+
+              const registro = {
+                index: idx + 1,
+                nombreCompleto,
+                usuario,
+                email,
+                oficina,
+                raw: fila,
+                estado: 'OK',
+                observaciones: ''
+              };
+
+              // Validaciones (sencillas al parseo)
+              const errores = [];
+              if (!nombre) errores.push('Nombre vacío');
+              if (!apellidoPaterno) errores.push('Apellido Paterno vacío');
+              if (!apellidoMaterno) errores.push('Apellido Materno vacío');
+              if (!usuario) errores.push('Nombre de usuario vacío');
+              if (!oficina) errores.push('Oficina vacía');
+
+              if (errores.length > 0) {
+                registro.estado = 'ERROR';
+                registro.observaciones = errores.join('; ');
+              }
+
+              registros.push(registro);
+            });
+
+            await validarExistentesEnBD(registros);
+
+            renderTabla();
+          } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'No se pudo leer el archivo. Asegúrate que sea un Excel válido.', 'error');
+            inputExcel.value = '';
+            registros = [];
+            renderTabla();
+          }
+        });
+
+        async function validarExistentesEnBD(registros) {
+          if (registros.length === 0) return;
+
+          const usuariosAValidar = registros.map(r => r.usuario);
+
+          try {
+            const resp = await fetch('/SASI/GestionUsuarios/ValidarExistentes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(usuariosAValidar)
+            });
+
+            if (resp.ok) {
+              const existentes = await resp.json(); // lista de UserName ya registrados
+              registros.forEach(r => {
+                if (existentes.includes(r.usuario)) {
+                  r.estado = 'ERROR';
+                  r.observaciones = (r.observaciones ? r.observaciones + '; ' : '') + 'Usuario ya existe en BD';
+                }
+              });
+            } else {
+              Swal.fire('Error', 'No se pudo validar contra la base de datos.', 'error');
+            }
+          } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Error de comunicación con el servidor.', 'error');
+          }
+        }
+
+        /* ---------- Renderizar tabla y paginador ---------- */
+        function renderTabla() {
+          const total = registros.length;
+          cantidadRegistros.innerText = total > 0 ? `${total} registros cargados.` : 'No hay registros cargados.';
+          tbodyPreview.innerHTML = '';
+
+          if (total === 0) {
+            tbodyPreview.innerHTML = `<tr><td colspan="7" class="text-center">No hay datos precargados.</td></tr>`;
+            renderPaginador(0);
+            btnProcesar.disabled = true; // <-- deshabilita si no hay registros
+            return;
+          }
+
+          const totalPaginas = Math.ceil(total / PAGE_SIZE);
+          if (paginaActual > totalPaginas) paginaActual = totalPaginas || 1;
+
+          const start = (paginaActual - 1) * PAGE_SIZE;
+          const pageItems = registros.slice(start, start + PAGE_SIZE);
+
+          pageItems.forEach((r, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${r.index}</td>
+              <td>${r.nombreCompleto}</td>
+              <td>${r.usuario}</td>
+              <td>${r.email}</td>
+              <td>${r.oficina}</td>
+              <td>${r.estado === 'OK' ? '<span class="badge bg-success">OK</span>' : '<span class="badge bg-danger">ERROR</span>'}</td>
+              <td>${r.observaciones}</td>
+            `;
+            tbodyPreview.appendChild(tr);
+          });
+
+          btnProcesar.disabled = false; // habilita si hay al menos 1 registro
+
+          renderPaginador(totalPaginas);
+        }
+
+        function renderPaginador(totalPaginas) {
+          paginador.innerHTML = '';
+          if (totalPaginas <= 1) return;
+
+          // Prev
+          const prevLi = document.createElement('li');
+          prevLi.className = `page-item ${paginaActual === 1 ? 'disabled' : ''}`;
+          prevLi.innerHTML = `<a class="page-link" href="#">Anterior</a>`;
+          prevLi.addEventListener('click', (e) => { e.preventDefault(); if (paginaActual > 1) { paginaActual--; renderTabla(); }});
+          paginador.appendChild(prevLi);
+
+          // páginas (limitamos a 7 botones si hay muchos)
+          const maxButtons = 7;
+          let start = Math.max(1, paginaActual - Math.floor(maxButtons/2));
+          let end = Math.min(totalPaginas, start + maxButtons - 1);
+          if (end - start < maxButtons - 1) start = Math.max(1, end - maxButtons + 1);
+
+          for (let i = start; i <= end; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === paginaActual ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+            li.addEventListener('click', (e) => { e.preventDefault(); paginaActual = i; renderTabla(); });
+            paginador.appendChild(li);
+          }
+
+          // Next
+          const nextLi = document.createElement('li');
+          nextLi.className = `page-item ${paginaActual === totalPaginas ? 'disabled' : ''}`;
+          nextLi.innerHTML = `<a class="page-link" href="#">Siguiente</a>`;
+          nextLi.addEventListener('click', (e) => { e.preventDefault(); if (paginaActual < totalPaginas) { paginaActual++; renderTabla(); }});
+          paginador.appendChild(nextLi);
+        }
+
+        /* ---------- Procesar datos (envío al servidor) ---------- */
+        btnProcesar.addEventListener('click', () => {
+          if (!registros || registros.length === 0) {
+            Swal.fire('Atención', 'Aún no has cargado un archivo Excel.', 'warning');
+            return;
+          }
+
+          const validos = registros.filter(r => r.estado === 'OK');
+          const invalidos = registros.filter(r => r.estado !== 'OK');
+
+          if (validos.length === 0) {
+            Swal.fire('Atención', 'No hay registros válidos para procesar.', 'warning');
+            return;
+          }
+
+          // Confirmación breve
+          Swal.fire({
+            title: '¿Procesar registros?',
+            html: `Se procesarán <b>${validos.length}</b> registros válidos. <br> ${invalidos.length} registros tienen errores y no se procesarán.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Procesar',
+            cancelButtonText: 'Cancelar'
+          }).then(result => {
+            if (result.isConfirmed) {
+              enviarRegistros(validos, invalidos);
+            }
+          });
+        });
+
+        /* Enviar registros usando XMLHttpRequest para tener progreso */
+        function enviarRegistros(validos, invalidos) {
+          const payload = validos.map(r => ({
+            NombreCompleto: r.nombreCompleto,
+            Usuario: r.usuario,
+            Email: r.email,
+            NombreOficina: r.oficina
+            // añade más campos si necesitas
+          }));
+
+          const url = '/SASI/GestionUsuarios/ProcesarCargaMasiva'; // asegúrate de la ruta en controlador
+
+          // Mostrar Swal con progreso
+          Swal.fire({
+            title: 'Procesando registros',
+            html: `
+              <div style="text-align:left">
+                <div id="swalProgressText">Iniciando...</div>
+                <div class="progress mt-2">
+                  <div id="swalProgressBar" class="progress-bar" role="progressbar" style="width:0%">0%</div>
+                </div>
+              </div>
+            `,
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            }
+          });
+
+          // crear xhr para tener onprogress
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', url, true);
+          xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
+
+          xhr.upload.onprogress = function (evt) {
+            if (evt.lengthComputable) {
+              const percent = Math.round((evt.loaded / evt.total) * 100);
+              updateSwalProgress(percent, `Subiendo datos: ${percent}%`);
+
+              if (percent === 100) {
+                updateSwalProgress(100, 'Datos enviados. Procesando en el servidor...');
+              }
+            }
+          };
+
+          xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4) {
+              try {
+                const resp = JSON.parse(xhr.responseText);
+                // resp puede contener {guardados: n, errores: [...], detalles...}
+                updateSwalProgress(100, 'Finalizado');
+                Swal.close();
+
+                // mostrar resumen
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Procesamiento finalizado',
+                  html: `
+                    <p>Registros enviados: <b>${payload.length}</b></p>
+                    <p>Guardados: <b>${resp.guardados ?? 0}</b></p>
+                    <p>Omitidos por errores: <b>${invalidos.length + (resp.errores?.length ?? 0)}</b></p>
+                  `
+                }).then(() => {
+                  // 🔹 Cerrar modal automáticamente al confirmar el SweetAlert
+                  const modalEl = document.getElementById('modalCargaMasiva');
+                  const modal = bootstrap.Modal.getInstance(modalEl);
+                  modal.hide();
+
+                  // opcional: limpiar tabla/form
+                  inputExcel.value = '';
+                  registros = [];
+                  renderTabla();
+                });
+
+              } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'Ocurrió un error al procesar. Revisa consola.', 'error');
+              }
+            }
+          };
+
+          xhr.onerror = function () {
+            Swal.fire('Error', 'Fallo en la conexión al enviar los datos.', 'error');
+          };
+
+          xhr.send(JSON.stringify(payload));
+        }
+
+        function updateSwalProgress(percent, texto) {
+          const bar = document.getElementById('swalProgressBar');
+          if (bar) {
+            bar.style.width = percent + '%';
+            bar.innerText = percent + '%';
+          }
+          const txt = document.getElementById('swalProgressText');
+          if (txt) txt.innerHTML = texto;
+        }
+    </script>
+}

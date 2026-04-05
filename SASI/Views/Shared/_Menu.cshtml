@@ -1,0 +1,30 @@
+﻿@model List<MenuItemViewModel>
+
+<ul class="navbar-nav me-3">
+    @foreach (var item in Model.Where(m => m.IdPadre == null).OrderBy(m => m.Orden))
+    {
+        var hijos = Model.Where(m => m.IdPadre == item.Id).OrderBy(m => m.Orden).ToList();
+        if (hijos.Any())
+        {
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">@item.Nombre</a>
+                <ul class="dropdown-menu">
+                    @foreach (var hijo in hijos)
+                    {
+                        <li>
+                            <a class="dropdown-item" href="/SASI/@hijo.Url">
+                                @hijo.Nombre
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </li>
+        }
+        else
+        {
+            <li class="nav-item">
+                <a class="nav-link" href="@item.Url"><i class="@item.Icono"> </i>@item.Nombre</a>
+            </li>
+        }
+    }
+</ul>

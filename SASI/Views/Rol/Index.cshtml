@@ -1,0 +1,325 @@
+﻿@model X.PagedList.IPagedList<SASI.Dominio.Modelo.Rol>
+@using X.PagedList
+@using X.PagedList.Mvc.Core
+
+@{
+    ViewData["Title"] = "Gestión de Roles";
+    var sistemaId = (int)ViewBag.SistemaId;
+    var nombreSistema = ViewBag.NombreSistema as string;
+}
+
+<h2 class="mt-5">Gestión de Roles: <b><u>@nombreSistema</u></b> <span class="text-muted fs-5">(@Model.TotalItemCount)</span></h2>
+
+<div class="d-flex justify-content-between align-items-center mb-3 mt-5">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearRolModal" id="btnNuevoRol">
+        <i class="bi bi-plus-lg"></i> Nuevo Rol
+    </button>
+
+    <a href="/SASI/Sistema/Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Regresar
+    </a>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="crearRolModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="crearRolLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="crearRolModalContent">
+            <!-- Aquí se cargará el formulario del rol -->
+        </div>
+    </div>
+</div>
+
+<table class="table table-bordered table-hover align-middle text-center">
+    <thead class="table-header-custom">
+        <tr>
+            <th style="width: 50px;">#</th>
+            <th>Nombre del Rol</th>
+            <th>Estado</th>
+            <th style="width: 160px;">Acciones</th>
+        </tr>
+    </thead>
+    <tbody id="tablaRolesBody">
+
+        @{
+            int index = ((ViewBag.PageNumber - 1) * ViewBag.PageSize) + 1;
+        }
+
+        @if (Model.Any())
+        {
+            foreach (var rol in Model)
+            {
+                <tr>
+                    <td style="font-weight:bold">@index</td>
+                    <td class="text-start">@rol.Nombre</td>
+                    <td>
+                        @if (rol.Activo)
+                        {
+                            <span class="badge bg-success">Habilitado</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Deshabilitado</span>
+                        }
+                    </td>
+                    <td>
+                        <a href="javascript:;" class="btn btn-sm btn-outline-warning me-1 btnEditarRol" data-id="@rol.IdRol" 
+                            data-bs-toggle="tooltip"
+                           data-bs-placement="top"
+                           title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button class="btn btn-sm btn-outline-secondary btnToggleRol me-1"
+                                data-id="@rol.IdRol"
+                                data-estado="@rol.Activo.ToString().ToLower()"
+                                data-bs-toggle="tooltip" title="Habilitar/Deshabilitar rol">
+                            <i class="bi @(rol.Activo ? "bi-toggle-on text-success" : "bi-toggle-off text-muted")"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success me-1 btnAsignarObjetos"
+                                data-id="@rol.IdRol"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Asignar objetos">
+                            <i class="bi bi-diagram-2"></i>
+                        </button>
+                    </td>
+                </tr>
+                index++;
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="4" class="text-muted fst-italic">No hay roles registrados para este sistema.</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Controles de paginación -->
+<div class="d-flex justify-content-center">
+    @Html.PagedListPager(Model, page => Url.Action("Index", new { sistemaId = ViewBag.SistemaId, page }),
+    new PagedListRenderOptions
+    {
+        DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+        DisplayLinkToLastPage = PagedListDisplayMode.Always,
+        DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+        DisplayLinkToNextPage = PagedListDisplayMode.Always,
+        UlElementClasses = new[] { "pagination" },
+        LiElementClasses = new[] { "page-item" },
+        PageClasses = new[] { "page-link" }
+    })
+</div>
+
+@section Scripts {
+    <script>
+
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        document.getElementById("btnNuevoRol").addEventListener("click", function () {
+            const sistemaId = @ViewBag.SistemaId;
+            fetch(`/SASI/Rol/Crear?sistemaId=${sistemaId}`)
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById("crearRolModalContent").innerHTML = html;
+
+                    const form = document.getElementById("formCrearRol");
+                    if (form) {
+                        form.addEventListener("submit", function (e) {
+                            e.preventDefault();
+
+                            const nombre = form.querySelector('[name="Nombre"]').value.trim();
+                            if (!nombre) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Campo requerido',
+                                    text: 'Por favor, ingresa un nombre para el rol.',
+                                    confirmButtonText: 'Aceptar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                });
+                                return;
+                            }
+
+                            Swal.fire({
+                                title: '¿Deseas registrar este rol?',
+                                text: 'Se agregará un nuevo rol al sistema.',
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonText: 'Sí, registrar',
+                                cancelButtonText: 'Cancelar',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false
+                            }).then(result => {
+                                if (result.isConfirmed) {
+                                    const formData = new FormData(form);
+
+                                    fetch(form.action, {
+                                        method: 'POST',
+                                        body: formData
+                                    })
+                                    .then(r => r.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            const modal = bootstrap.Modal.getInstance(document.getElementById("crearRolModal"));
+                                            modal.hide();
+
+                                            mostrarSpinnerYMensaje({
+                                                mensajeExito: 'El rol fue guardado correctamente.',
+                                                callbackFinal: () => location.reload()
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        });
+                    }
+                });
+        });
+    </script>
+
+    <script>
+        document.querySelectorAll('.btnToggleRol').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const rolId = this.getAttribute('data-id');
+                const estadoActual = this.getAttribute('data-estado') === 'true';
+                const nuevoEstado = !estadoActual;
+
+                Swal.fire({
+                    title: nuevoEstado ? '¿Habilitar rol?' : '¿Deshabilitar rol?',
+                    text: nuevoEstado
+                        ? "El rol será habilitado nuevamente."
+                        : "El rol será deshabilitado.",
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: nuevoEstado ? 'Habilitar' : 'Deshabilitar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: nuevoEstado ? '#198754' : '#dc3545',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/SASI/Rol/CambiarEstado`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            },
+                            body: JSON.stringify({ id: parseInt(rolId) })
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Cambiar el icono e indicador de estado
+                                const icon = this.querySelector('i');
+                                this.setAttribute('data-estado', data.estado);
+                                if (data.estado) {
+                                    icon.classList.remove('bi-toggle-off', 'text-muted');
+                                    icon.classList.add('bi-toggle-on', 'text-success');
+                                } else {
+                                    icon.classList.remove('bi-toggle-on', 'text-success');
+                                    icon.classList.add('bi-toggle-off', 'text-muted');
+                                }
+
+                                mostrarSpinnerYMensaje({
+                                    mensajeExito: data.estado ? 'Rol habilitado.' : 'Rol deshabilitado.',
+                                    callbackFinal: () => location.reload()
+                                });
+                            } else {
+                                Swal.fire('Error', 'No se pudo actualizar el estado del rol.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+
+    <script>
+        document.querySelectorAll('.btnEditarRol').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const rolId = this.getAttribute('data-id');
+                fetch(`/SASI/Rol/Editar?id=${rolId}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById("crearRolModalContent").innerHTML = html;
+
+                        const modal = new bootstrap.Modal(document.getElementById("crearRolModal"));
+                        modal.show();
+
+                        const form = document.getElementById("formCrearRol");
+                        if (form) {
+                            form.addEventListener("submit", function (e) {
+                                e.preventDefault();
+
+                                const nombre = form.querySelector('[name="Nombre"]').value.trim();
+                                if (!nombre) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, ingresa un nombre para el rol.',
+                                        confirmButtonText: 'Aceptar'
+                                    });
+                                    return;
+                                }
+
+                                Swal.fire({
+                                    title: '¿Deseas actualizar este rol?',
+                                    text: 'Se guardarán los cambios del rol.',
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Sí, actualizar',
+                                    cancelButtonText: 'Cancelar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                }).then(result => {
+                                    if (result.isConfirmed) {
+                                        const formData = new FormData(form);
+
+                                        fetch(form.action, {
+                                            method: 'POST',
+                                            body: formData
+                                        })
+                                        .then(r => r.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                modal.hide();
+
+                                                mostrarSpinnerYMensaje({
+                                                    mensajeExito: 'Los cambios fueron actualizados correctamente.',
+                                                    callbackFinal: () => location.reload()
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                            });
+                        }
+                    });
+            });
+        });
+    </script>
+
+    <script>
+        $(document).on('click', '.btnAsignarObjetos', function () {
+            const idRol = $(this).data('id');
+
+            $.get(`/SASI/Rol/ValidarObjetosPorSistema`, { idRol }, function (res) {
+                if (res.existe) {
+                    window.location.href = `/SASI/Rol/AsignarObjetos?idRol=${idRol}`;
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sin objetos registrados',
+                        text: 'No se han registrado objetos para este sistema.',
+                        confirmButtonText: 'Aceptar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
+                }
+            });
+        });
+    </script>
+}

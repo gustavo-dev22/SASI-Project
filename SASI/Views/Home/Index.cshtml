@@ -1,0 +1,76 @@
+﻿@model List<MenuItemViewModel>
+
+@{
+    ViewData["Title"] = "Inicio";
+}
+
+@{
+    ViewData["Title"] = "Inicio";
+}
+
+<div class="container mt-5">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold">Bienvenido al Sistema de Administración SASI</h2>
+        <p class="text-muted">Seleccione una opción para continuar</p>
+    </div>
+
+    <div class="row justify-content-center">
+        @foreach (var item in Model)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="@item.Icono display-4 text-primary"></i>
+                        <h5 class="card-title mt-3">@item.Nombre</h5>
+                        <p class="card-text">@item.Nombre</p>
+                        <a href="@item.Url" class="btn btn-primary w-100">
+                            Ir a @item.Nombre
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @* <div class="row justify-content-center">
+        <!-- Gestión de Sistemas -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-diagram-3-fill display-4 text-primary"></i>
+                    <h5 class="card-title mt-3">Gestión de Sistemas</h5>
+                    <p class="card-text">Administra y configura los sistemas registrados.</p>
+                    <a href="@Url.Action("Index", "Sistema")" class="btn btn-primary w-100">Ir a Sistemas</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gestión de Cuentas de Usuario -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-lines-fill display-4 text-success"></i>
+                    <h5 class="card-title mt-3">Gestión de Usuarios</h5>
+                    <p class="card-text">Asigna usuarios y roles a cada sistema.</p>
+                    <a href="@Url.Action("Index", "GestionUsuarios")" class="btn btn-success w-100">Ir a Usuarios</a>
+                </div>
+            </div>
+        </div>
+    </div> *@
+</div>
+
+<script>
+    window.onload = function () {
+        var mostrarModal = '@ViewBag.MostrarModalPassword' === 'True';
+        if (mostrarModal) {
+            var emailUsuario = '@User.Identity.Name';
+            document.getElementById("emailCambioPassword").value = emailUsuario;
+            var error = '@ViewBag.ErrorCambioPassword';
+            if (error) {
+                document.getElementById("errorCambioPassword").innerText = error;
+            }
+            var modal = new bootstrap.Modal(document.getElementById('cambiarPasswordModal'));
+            modal.show();
+        }
+    };
+</script>

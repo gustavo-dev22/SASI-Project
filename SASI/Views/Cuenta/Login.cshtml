@@ -1,0 +1,406 @@
+﻿@{
+    ViewData["Title"] = "Login";
+}
+
+<style>
+    /* Estilo del overlay */
+    #loadingOverlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+
+    .blurred {
+        filter: blur(2px);
+        pointer-events: none;
+        user-select: none;
+    }
+</style>
+
+<body style="overflow: hidden">
+    <div class="container d-flex justify-content-center align-items-center min-vh-100 position-relative">
+        <!-- Overlay -->
+        <div id="loadingOverlay">
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 fw-bold">Cargando...</p>
+            </div>
+        </div>
+
+        <div class="card shadow-lg p-4" style="width: 100%; max-width: 400px;" id="loginCard">
+            <h4 class="text-center mb-4">Iniciar sesión</h4>
+
+            <form asp-action="Login" method="post" id="loginForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+                <div class="mb-3">
+                    <label for="email" class="form-label">Correo electrónico</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                        <input id="email" name="email" type="email" class="form-control" placeholder="usuario@correo.com" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Contraseña</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                        <input id="password" name="password" type="password" class="form-control" placeholder="••••••••" />
+                    </div>
+                </div>
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger mt-2">
+                        @(ViewData.ModelState.Values.SelectMany(v => v.Errors).FirstOrDefault()?.ErrorMessage)
+                    </div>
+                }
+
+                <div class="d-grid mt-4">
+                    <button type="button" class="btn btn-primary" id="btnLogin">Ingresar</button>
+                </div>
+
+                @if (TempData["intentosRestantes"] != null)
+                {
+                    <div class="alert alert-warning mt-3">
+                        Te quedan @TempData["intentosRestantes"] intento(s) antes de que tu cuenta sea bloqueada.
+                    </div>
+                }
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de cambio de contraseña -->
+    <div class="modal fade" id="cambiarPasswordModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="cambiarPasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <form action="/SASI/Cuenta/CambiarPasswordObligatorio" method="post" id="formCambioPassword">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="email" id="emailCambioPassword" value="" />
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="cambiarPasswordModalLabel">Cambio de contraseña obligatorio</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Nueva contraseña</label>
+                            <input type="password" name="nuevaPassword" class="form-control" id="nuevaPassword" />
+                        </div>
+                        <div class="form-group">
+                            <label>Confirmar nueva contraseña</label>
+                            <input type="password" name="confirmarPassword" class="form-control" id="confirmarPassword" />
+                        </div>
+
+                        <!-- Aquí se mostrará el mensaje de validación interactiva (ver punto 2) -->
+                        <div id="passwordPolicy" class="mt-2"></div>
+
+                        <div class="text-danger" id="errorCambioPassword">
+                            @ViewBag.Error
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-primary" id="btnCambiarPassword">Cambiar contraseña</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        document.getElementById("btnLogin").addEventListener("click", function (e) {
+            e.preventDefault(); // Evitar envío tradicional
+
+            const emailInput = document.getElementById("email");
+            const passwordInput = document.getElementById("password");
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Correo requerido',
+                    text: 'Por favor, ingresa tu correo electrónico.',
+                    confirmButtonText: 'Aceptar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(() => emailInput.focus());
+                return;
+            }
+
+            if (!password) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Contraseña requerida',
+                    text: 'Por favor, ingresa tu contraseña.',
+                    confirmButtonText: 'Aceptar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(() => passwordInput.focus());
+                return;
+            }
+
+            const overlay = document.getElementById("loadingOverlay");
+            const card = document.getElementById("loginCard");
+
+            overlay.style.display = "flex";
+            card.classList.add("blurred");
+
+            // Enviar los datos vía AJAX
+            $.ajax({
+                url: '/Cuenta/Login',
+                type: 'POST',
+                data: {
+                    email: email,
+                    password: password,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function (data) {
+                    overlay.style.display = "none";
+                    card.classList.remove("blurred");
+
+                    if (data.success) {
+                        window.location.href = data.redirectUrl;
+                    } else {
+                        switch (data.tipo) {
+                            case "inactivo":
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Cuenta inactiva', 
+                                    text: 'Tu cuenta está inactiva. Contacta al administrador.',
+                                    confirmButtonText: 'Aceptar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                });
+                                break;
+                            case "bloqueado":
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Cuenta bloqueada', 
+                                    text: 'Tu cuenta ha sido bloqueada por múltiples intentos fallidos.',
+                                    confirmButtonText: 'Aceptar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                });
+                                break;
+                            case "sinRol":
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Sin rol asignado', 
+                                    text: 'No tienes roles activos en SASI.',
+                                    confirmButtonText: 'Aceptar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                });
+                                break;
+                            case "cambioPasswordObligatorio":
+                            case "passwordVencida":
+                                    // Regenerar el token antes de mostrar el modal
+                                $.get('/SASI/Cuenta/ObtenerTokenAntiForgery', function (data) {
+                                    $('input[name="__RequestVerificationToken"]').val(data.token); // actualiza el token del formulario del modal
+
+                                    $("#emailCambioPassword").val($("#email").val());
+                                    $('#cambiarPasswordModal').modal('show');
+                                });
+                                break;
+                            case "credencialesInvalidas":
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Credenciales inválidas', 
+                                    text: `Correo o contraseña incorrectos. Intentos restantes: ${data.intentosRestantes}`,
+                                    confirmButtonText: 'Aceptar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                });
+                                break;
+                            case "usuarioNoExiste":
+                            default:
+                                Swal.fire({
+                                    icon: 'error', 
+                                    title: 'Error de inicio de sesión', 
+                                    text: 'No se pudo iniciar sesión. Verifica tus datos.',
+                                    confirmButtonText: 'Aceptar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                });
+                                break;
+                        }
+                    }
+                },
+                error: function () {
+                    overlay.style.display = "none";
+                    card.classList.remove("blurred");
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error', 
+                        text: 'Ocurrió un error inesperado en el servidor.',
+                        confirmButtonText: 'Aceptar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
+                }
+            });
+        });
+    </script>
+
+
+    <script>
+        function prevenirEspaciosYCopiar(inputId) {
+            const input = document.getElementById(inputId);
+
+            if (!input) return;
+
+            // Prevenir espacios en tiempo real
+            input.addEventListener('keydown', function (e) {
+                if (e.key === ' ' || e.code === 'Space') {
+                    e.preventDefault();
+                }
+            });
+
+            // Remover espacios pegados
+            input.addEventListener('input', function () {
+                this.value = this.value.replace(/\s/g, '');
+            });
+
+            // Bloquear copiar, cortar y pegar
+            ['copy', 'cut', 'paste', 'contextmenu'].forEach(evt => {
+                input.addEventListener(evt, function (e) {
+                    e.preventDefault();
+                });
+            });
+
+            // Bloquear Ctrl+C, Ctrl+X, Ctrl+V
+            input.addEventListener('keydown', function (e) {
+                if ((e.ctrlKey || e.metaKey) && ['c', 'x', 'v'].includes(e.key.toLowerCase())) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // Aplicar la función a los campos
+        prevenirEspaciosYCopiar('email');
+        prevenirEspaciosYCopiar('password');
+    </script>
+
+    <script>
+        $(document).ready(function () {
+            const policyDiv = $("#passwordPolicy");
+            const passwordInput = $("#nuevaPassword");
+
+            function validarPassword(password) {
+                const reglas = [
+                    { regex: /.{8,}/, mensaje: "Mínimo 8 caracteres" },
+                    { regex: /[A-Z]/, mensaje: "Al menos una letra mayúscula" },
+                    { regex: /[a-z]/, mensaje: "Al menos una letra minúscula" },
+                    { regex: /[0-9]/, mensaje: "Al menos un número" },
+                    { regex: /[^A-Za-z0-9]/, mensaje: "Al menos un carácter especial" }
+                ];
+
+                let html = "<ul>";
+                reglas.forEach(regla => {
+                    const cumple = regla.regex.test(password);
+                    html += `<li style="color: ${cumple ? 'green' : 'red'}">${regla.mensaje}</li>`;
+                });
+                html += "</ul>";
+                policyDiv.html(html);
+            }
+
+            passwordInput.on("input", function () {
+                validarPassword($(this).val());
+            });
+        });
+    </script>
+
+    <script>
+        document.getElementById("btnCambiarPassword").addEventListener("click", function () {
+            const nuevaPassword = document.getElementById("nuevaPassword").value.trim();
+            const confirmarPassword = document.getElementById("confirmarPassword").value.trim();
+
+            const reglas = [
+                { regex: /.{8,}/, mensaje: "Mínimo 8 caracteres" },
+                { regex: /[A-Z]/, mensaje: "Al menos una letra mayúscula" },
+                { regex: /[a-z]/, mensaje: "Al menos una letra minúscula" },
+                { regex: /[0-9]/, mensaje: "Al menos un número" },
+                { regex: /[^A-Za-z0-9]/, mensaje: "Al menos un carácter especial" }
+            ];
+
+            if (!nuevaPassword || !confirmarPassword) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campos requeridos',
+                    text: 'Por favor completa ambos campos de contraseña.',
+                    confirmButtonText: 'Aceptar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+                return;
+            }
+
+            if (nuevaPassword !== confirmarPassword) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Contraseñas no coinciden',
+                    text: 'La nueva contraseña y su confirmación deben ser iguales.',
+                    confirmButtonText: 'Aceptar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+                return;
+            }
+
+            const fallas = reglas.filter(r => !r.regex.test(nuevaPassword));
+            if (fallas.length > 0) {
+                let listaErrores = fallas.map(f => `<li>${f.mensaje}</li>`).join('');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Contraseña inválida',
+                    html: `<ul style="text-align: left;">${listaErrores}</ul>`,
+                    confirmButtonText: 'Aceptar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Procesando...',
+                text: 'Estamos actualizando tu contraseña.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            setTimeout(() => {
+
+                const form = document.getElementById("formCambioPassword");
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Contraseña actualizada',
+                    text: 'Se ha cambiado la contraseña correctamente. Serás redirigido al inicio de sesión.',
+                    confirmButtonText: 'Aceptar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(() => {
+                    form.submit();
+                });
+            }, 3000);
+        });
+    </script>
+
+}

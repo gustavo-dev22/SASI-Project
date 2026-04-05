@@ -1,0 +1,504 @@
+﻿@model X.PagedList.IPagedList<SASI.Dominio.Modelo.Objeto>
+@using X.PagedList
+@using X.PagedList.Mvc.Core
+
+@{
+    ViewBag.Title = "Objetos del Sistema";
+}
+
+<h2 class="mt-5">Objetos del Sistema: <b><u>@ViewBag.Sistema.Nombre</u></b> <span class="text-muted fs-5">(@Model.TotalItemCount)</span></h2>
+
+<div class="d-flex justify-content-between align-items-center mb-3 mt-5">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearObjetoModal" data-id-sistema="@ViewBag.Sistema.IdSistema" id="btnNuevoObjeto">
+        <i class="bi bi-plus-lg"></i> Nuevo Objeto
+    </button>
+
+    <a href="/SASI/Sistema/Index" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Regresar
+    </a>
+</div>
+
+<table class="table table-bordered table-hover align-middle text-center">
+    <thead class="table-header-custom">
+        <tr>
+            <th style="width: 50px;">#</th>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>URL</th>
+            <th>Título</th>
+            <th>Icono</th>
+            <th>Activo</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            int index = ((ViewBag.PageNumber - 1) * ViewBag.PageSize) + 1;
+        }
+
+        @if (Model.Any())
+        {
+            foreach (var obj in Model)
+            {
+                <tr>
+                    <td style="font-weight:bold">@index</td>
+                    <td>@obj.Nombre</td>
+                    <td>@obj.Tipo</td>
+                    <td>@obj.Url</td>
+                    <td>@obj.Titulo</td>
+                    <td>@obj.Icono</td>
+                    <td>@(obj.Activo ? "SI" : "NO")</td>
+                    <td>
+                        <a href="javascript:;" class="btn btn-sm btn-outline-warning me-1 btnEditarObjeto" data-id="@obj.IdObjeto"
+                           data-bs-toggle="tooltip"
+                           data-bs-placement="top"
+                           title="Editar">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button class="btn btn-sm btn-outline-secondary btnToggleObjeto me-1"
+                                data-id="@obj.IdObjeto"
+                                data-estado="@obj.Activo.ToString().ToLower()"
+                                data-bs-toggle="tooltip" title="Habilitar/Deshabilitar objeto">
+                            <i class="bi @(obj.Activo ? "bi-toggle-on text-success" : "bi-toggle-off text-muted")"></i>
+                        </button>
+                    </td>
+                </tr>
+                index++;
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="7" class="text-center text-muted fst-italic">No hay objetos registrados para este sistema.</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Controles de paginación -->
+<div class="d-flex justify-content-center">
+    @Html.PagedListPager(Model, page => Url.Action("Index", new { idSistema = ViewBag.Sistema.IdSistema, page }),
+    new PagedListRenderOptions
+    {
+        DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+        DisplayLinkToLastPage = PagedListDisplayMode.Always,
+        DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+        DisplayLinkToNextPage = PagedListDisplayMode.Always,
+        UlElementClasses = new[] { "pagination" },
+        LiElementClasses = new[] { "page-item" },
+        PageClasses = new[] { "page-link" }
+    })
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="crearObjetoModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="crearObjetoLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" id="crearObjetoModalContent">
+            <!-- Aquí se cargará el formulario del objeto -->
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        document.getElementById("btnNuevoObjeto").addEventListener("click", function () {
+            const sistemaId = this.getAttribute("data-id-sistema");
+            fetch(`/SASI/Objeto/Crear?idSistema=${sistemaId}`)
+                .then(response => response.text())
+                .then(html => {
+                    document.getElementById("crearObjetoModalContent").innerHTML = html;
+
+                    const form = document.getElementById("formCrearObjeto");
+                    if (form) {
+                        form.addEventListener("submit", function (e) {
+                            e.preventDefault();
+
+                                const nombre = form.querySelector('[name="Nombre"]').value.trim();
+                                const tipo = form.querySelector('[name="Tipo"]').value;
+                                const url = form.querySelector('[name="Url"]').value.trim();
+                                const icono = form.querySelector('[name="Icono"]').value.trim();
+                                const titulo = form.querySelector('[name="Titulo"]').value.trim();
+                                const ordenStr = form.querySelector('[name="Orden"]').value;
+                                const idPadre = form.querySelector('[name="IdPadre"]')?.value;
+
+                                const orden = parseInt(ordenStr, 10);
+
+                                // Validar Nombre
+                                if (!nombre) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, ingresa un nombre para el objeto.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar Tipo
+                                if (!tipo) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, selecciona un tipo de objeto.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar Url
+                                if (!url) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, ingresa una URL para el objeto.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar Icono
+                                if (!icono) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, ingresa un Icono para el objeto.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar Titulo
+                                if (!titulo) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, ingresa un Título para el objeto.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar Orden
+                                if (isNaN(orden) || orden <= 0) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Valor inválido',
+                                        text: 'Por favor, ingresa un número válido mayor a 0 para el orden.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar IdPadre si el tipo es Submenu o Item
+                                if ((tipo === 'Submenu' || tipo === 'Item') && !idPadre) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, selecciona un objeto padre.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                            Swal.fire({
+                                title: '¿Deseas registrar este objeto?',
+                                text: 'Se agregará un nuevo objeto al sistema.',
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonText: 'Sí, registrar',
+                                cancelButtonText: 'Cancelar',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false
+                            }).then(result => {
+                                if (result.isConfirmed) {
+                                    const formData = new FormData(form);
+
+                                    fetch(form.action, {
+                                        method: 'POST',
+                                        body: formData
+                                    })
+                                    .then(r => r.json())
+                                    .then(data => {
+                                        if (data.success) {
+                                            const modal = bootstrap.Modal.getInstance(document.getElementById("crearObjetoModal"));
+                                            modal.hide();
+
+                                            Swal.fire({
+                                                icon: 'success',
+                                                title: 'Objeto registrado',
+                                                text: 'El objeto fue guardado correctamente.',
+                                                showConfirmButton: true,
+                                                allowOutsideClick: false,
+                                                allowEscapeKey: false
+                                            });
+
+                                            setTimeout(() => location.reload(), 2000);
+                                        }
+                                    });
+                                }
+                            });
+                        });
+                    }
+                });
+        });
+    </script>
+
+    <script>
+        document.querySelectorAll('.btnEditarObjeto').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const objetoId = this.getAttribute('data-id');
+                fetch(`/SASI/Objeto/Editar?id=${objetoId}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        document.getElementById("crearObjetoModalContent").innerHTML = html;
+
+                        const modal = new bootstrap.Modal(document.getElementById("crearObjetoModal"));
+                        modal.show();
+
+                        // Obtener elementos del formulario
+                        const tipoSelect = document.getElementById('Tipo');
+                        const divPadre = document.getElementById('divPadre');
+                        const padreSelect = document.querySelector('[name="IdPadre"]');
+
+                        // Mostrar divPadre si ya hay un tipo seleccionado compatible o si ya tiene un padre asignado
+                        if (tipoSelect && divPadre && padreSelect) {
+                            const tipo = tipoSelect.value;
+                            const idPadre = padreSelect.value;
+
+                            if (tipo === 'Submenu' || tipo === 'Item' || (idPadre && idPadre !== '0')) {
+                                divPadre.style.display = 'block';
+                            }
+                        }
+
+                        const form = document.getElementById("formCrearObjeto");
+                        if (form) {
+                            form.addEventListener("submit", function (e) {
+                                e.preventDefault();
+
+                                const nombre = form.querySelector('[name="Nombre"]').value.trim();
+                                const tipo = form.querySelector('[name="Tipo"]').value;
+                                const url = form.querySelector('[name="Url"]').value.trim();
+                                const titulo = form.querySelector('[name="Titulo"]').value.trim();
+                                const icono = form.querySelector('[name="Icono"]').value.trim();
+                                const ordenStr = form.querySelector('[name="Orden"]').value;
+                                const idPadre = form.querySelector('[name="IdPadre"]')?.value;
+
+                                const orden = parseInt(ordenStr, 10);
+
+                                // Validar Nombre
+                                if (!nombre) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, ingresa un nombre para el objeto.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar Tipo
+                                if (!tipo) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, selecciona un tipo de objeto.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar Url
+                                if (!url) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, ingresa una URL para el objeto.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar Titulo
+                                if (!titulo) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, ingresa un Título para el objeto.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar Icono
+                                if (!icono) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, ingresa un Icono para el objeto.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar Orden
+                                if (isNaN(orden) || orden <= 0) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Valor inválido',
+                                        text: 'Por favor, ingresa un número válido mayor a 0 para el orden.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                // Validar IdPadre si el tipo es Submenu o Item
+                                if ((tipo === 'Submenu' || tipo === 'Item') && !idPadre) {
+                                    Swal.fire({
+                                        icon: 'warning',
+                                        title: 'Campo requerido',
+                                        text: 'Por favor, selecciona un objeto padre.',
+                                        confirmButtonText: 'Aceptar',
+                                        allowOutsideClick: false,
+                                        allowEscapeKey: false
+                                    });
+                                    return;
+                                }
+
+                                Swal.fire({
+                                    title: '¿Deseas actualizar este objeto?',
+                                    text: 'Se guardarán los cambios del objeto.',
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    confirmButtonText: 'Sí, actualizar',
+                                    cancelButtonText: 'Cancelar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                }).then(result => {
+                                    if (result.isConfirmed) {
+                                        const formData = new FormData(form);
+
+                                        fetch(form.action, {
+                                            method: 'POST',
+                                            body: formData
+                                        })
+                                        .then(r => r.json())
+                                        .then(data => {
+                                            if (data.success) {
+                                                modal.hide();
+
+                                                Swal.fire({
+                                                    icon: 'success',
+                                                    title: 'Objeto actualizado',
+                                                    text: 'Los cambios fueron guardados correctamente.',
+                                                    timer: 2000,
+                                                    showConfirmButton: true,
+                                                    allowOutsideClick: false,
+                                                    allowEscapeKey: false
+                                                });
+
+                                                setTimeout(() => location.reload(), 1000);
+                                            }
+                                        });
+                                    }
+                                });
+                            });
+                        }
+                    });
+            });
+        });
+    </script>
+
+    <script>
+        document.querySelectorAll('.btnToggleObjeto').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const objetoId = this.getAttribute('data-id');
+                const estadoActual = this.getAttribute('data-estado') === 'true';
+                const nuevoEstado = !estadoActual;
+
+                Swal.fire({
+                    title: nuevoEstado ? '¿Habilitar objeto?' : '¿Deshabilitar objeto?',
+                    text: nuevoEstado
+                        ? "El objeto será habilitado nuevamente."
+                        : "El objeto será deshabilitado.",
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: nuevoEstado ? 'Habilitar' : 'Deshabilitar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: nuevoEstado ? '#198754' : '#dc3545',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/SASI/Objeto/CambiarEstado`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            },
+                            body: JSON.stringify({ id: parseInt(objetoId) })
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Cambiar el icono e indicador de estado
+                                const icon = this.querySelector('i');
+                                this.setAttribute('data-estado', data.estado);
+                                if (data.estado) {
+                                    icon.classList.remove('bi-toggle-off', 'text-muted');
+                                    icon.classList.add('bi-toggle-on', 'text-success');
+                                } else {
+                                    icon.classList.remove('bi-toggle-on', 'text-success');
+                                    icon.classList.add('bi-toggle-off', 'text-muted');
+                                }
+
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Listo',
+                                    text: data.estado ? 'Objeto habilitado.' : 'Objeto deshabilitado.',
+                                    timer: 1500,
+                                    showConfirmButton: true,
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                }).then(() => location.reload());
+                            } else {
+                                Swal.fire('Error', 'No se pudo actualizar el estado del objeto.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+}

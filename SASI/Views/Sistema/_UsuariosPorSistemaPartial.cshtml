@@ -1,0 +1,63 @@
+﻿@using SASI.Dominio.DTO
+@using X.PagedList
+@using X.PagedList.Mvc.Core
+
+@model IPagedList<UsuarioConRolesDto>
+
+<table class="table table-bordered table-hover">
+    <thead class="table-header-custom">
+        <tr>
+            <th style="text-align:center; vertical-align:middle;">#</th>
+            <th style="text-align:center; vertical-align:middle;">Nombre Completo</th>
+            <th style="text-align:center; vertical-align:middle;">Correo Electrónico</th>
+            <th style="text-align:center; vertical-align:middle;">Usuario</th>
+            <th style="text-align:center; vertical-align:middle;">Roles</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            int i = ((Model.PageNumber - 1) * Model.PageSize) + 1;
+        }
+
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="5" class="text-center text-muted">No hay usuarios asignados a este sistema.</td>
+            </tr>
+        }
+        else
+        {
+            foreach (var usuario in Model)
+            {
+                <tr>
+                    <td style="text-align:center; vertical-align:middle;">@i</td>
+                    <td style="text-align:center; vertical-align:middle;">@usuario.NombreCompleto</td>
+                    <td style="text-align:center; vertical-align:middle;">@usuario.Email</td>
+                    <td style="text-align:center; vertical-align:middle;">@usuario.UserName</td>
+                    <td style="text-align:center; vertical-align:middle;">
+                        @foreach (var rol in usuario.Roles)
+                        {
+                            <div class="mb-1">
+                                <span class="badge bg-primary">@rol</span>
+                            </div>
+                        }
+                    </td>
+                </tr>
+                i++;
+            }
+        }
+    </tbody>
+</table>
+
+<div class="d-flex justify-content-center mt-3">
+    @Html.PagedListPager(Model, page => Url.Action("UsuariosPorSistema", "Sistema", new { sistemaId = ViewBag.SistemaId, page }), new PagedListRenderOptions
+    {
+        DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+        DisplayLinkToLastPage = PagedListDisplayMode.Always,
+        DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+        DisplayLinkToNextPage = PagedListDisplayMode.Always,
+        UlElementClasses = new[] { "pagination" },
+        LiElementClasses = new[] { "page-item" },
+        PageClasses = new[] { "page-link" }
+        })
+</div>

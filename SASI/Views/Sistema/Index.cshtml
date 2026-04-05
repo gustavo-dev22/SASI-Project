@@ -1,0 +1,583 @@
+﻿@model IPagedList<SistemaViewModel>
+
+@using SASI.Dominio.Modelo
+@using X.PagedList
+@using X.PagedList.Mvc.Core
+
+@{
+    ViewData["Title"] = "Listado de Sistemas";
+}
+
+<style>
+    .truncate-text {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-5">
+    <h2 class="mb-0">Listado de Sistemas <span class="text-muted fs-5">(@ViewBag.Total)</span></h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearSistemaModal">
+        <i class="bi bi-plus-lg"></i> Nuevo Sistema
+    </button>
+</div>
+
+<table class="table table-bordered table-hover" style="width:100%">
+    <thead class="table-header-custom">
+        <tr>
+            <th width="2%" style="text-align:center; vertical-align:middle">#</th>
+            <th width="4%" style="text-align:center; vertical-align:middle">Código</th>
+            <th width="42%" style="text-align:center; vertical-align:middle">Nombre</th>
+            <th width="20%" style="text-align:center; vertical-align:middle">Descripción</th>
+            <th width="7%" style="text-align:center; vertical-align:middle">Fecha de Registro</th>
+            <th style="text-align:center; vertical-align:middle">Activo</th>
+            <th width="6%" style="text-align:center; vertical-align:middle">Roles Asignados</th>
+            <th width="19%" class="text-center" style="text-align:center; vertical-align:middle">Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            int index = ((ViewBag.PageNumber - 1) * ViewBag.PageSize) + 1;
+        }
+
+        @foreach (var sistema in Model)
+        {
+            <tr class="@(sistema.Estado ? "" : "table-danger")">
+                <td style="text-align:center; vertical-align:middle; font-weight:bold">@index</td>
+                <td style="text-align:center; vertical-align:middle">@sistema.Codigo</td>
+                <td title="@sistema.Nombre" class="truncate-text" style="vertical-align:middle">@sistema.Nombre</td>
+                <td style="vertical-align:middle">@sistema.Descripcion</td>
+                <td style="text-align:center; vertical-align:middle">@sistema.FechaRegistro.ToString("dd/MM/yyyy")</td>
+                <td style="text-align:center; vertical-align:middle">
+                    @(sistema.Estado ? "SI" : "NO")
+                </td>
+                <td style="text-align:center; vertical-align:middle">@sistema.CantidadRoles</td>
+                <td class="text-center" style="vertical-align:middle">
+                    <!-- Botón Editar -->
+                    <button type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="tooltip" title="Editar"
+                            onclick="editarSistema(@sistema.IdSistema)">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+
+                    <!-- Botón Activar/Desactivar -->
+                    <button type="button"
+                            class="btn btn-sm @(sistema.Estado ? "btn-outline-danger" : "btn-outline-success") me-1"
+                            data-bs-toggle="tooltip"
+                            title="@(sistema.Estado ? "Desactivar Sistema" : "Habilitar Sistema")"
+                            onclick="toggleEstadoSistema(@sistema.IdSistema, @(sistema.Estado.ToString().ToLower()))">
+                        <i class="bi @(sistema.Estado ? "bi-x-circle" : "bi-check-circle")"></i>
+                    </button>
+
+                    @if (sistema.Estado)
+                    {
+                        <a href="@Url.Action("Index", "Rol", new { sistemaId = sistema.IdSistema })"
+                           class="btn btn-sm btn-outline-secondary me-1"
+                           data-bs-toggle="tooltip"
+                           data-bs-placement="top"
+                           title="Gestionar Roles">
+                            <i class="bi bi-people-fill"></i>
+                        </a>
+
+                        <a href="@Url.Action("Index", "Objeto", new { idSistema = sistema.IdSistema })"
+                           class="btn btn-sm btn-outline-warning me-1"
+                           data-bs-toggle="tooltip"
+                           data-bs-placement="top"
+                           title="Establecer Objetos">
+                            <i class="bi bi-diagram-3-fill"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary me-1"
+                                onclick="mostrarAdvertencia()"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Gestionar Roles">
+                            <i class="bi bi-people-fill"></i>
+                        </button>
+
+                        <button type="button"
+                                class="btn btn-sm btn-outline-warning me-1"
+                                onclick="mostrarAdvertencia()"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                title="Establecer Objetos">
+                            <i class="bi bi-diagram-3-fill"></i>
+                        </button>
+                    }
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-info me-1"
+                            data-bs-toggle="tooltip"
+                            title="Ver Usuarios"
+                            onclick="mostrarUsuarios(@sistema.IdSistema)">
+                        <i class="bi bi-person-lines-fill"></i>
+                    </button>
+                </td>
+            </tr>
+            index++;
+        }
+    </tbody>
+</table>
+
+<div class="mt-3 text-end">
+    <span class="badge bg-success me-2 px-3 py-2">
+        <i class="bi bi-check-circle-fill"></i> Activos: @ViewBag.TotalActivos
+    </span>
+    <span class="badge bg-danger px-3 py-2">
+        <i class="bi bi-x-circle-fill"></i> Inactivos: @ViewBag.TotalInactivos
+    </span>
+</div>
+
+<!-- Controles de paginación -->
+<div class="d-flex justify-content-center">
+    @Html.PagedListPager(Model, page => Url.Action("Index", new { page }),
+            new PagedListRenderOptions
+    {
+        DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+        DisplayLinkToLastPage = PagedListDisplayMode.Always,
+        DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+        DisplayLinkToNextPage = PagedListDisplayMode.Always,
+        UlElementClasses = new[] { "pagination" },
+        LiElementClasses = new[] { "page-item" },
+        PageClasses = new[] { "page-link" }
+    })
+</div>
+
+<div class="modal fade" id="crearSistemaModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="crearSistemaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="formCrearSistema">
+
+                <input type="hidden" id="IdSistema" name="IdSistema" value="0" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crearSistemaLabel">Nuevo Sistema</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Código</label>
+                        <input type="text" id="Codigo" name="Codigo" class="form-control" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" id="Nombre" name="Nombre" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <textarea id="Descripcion" name="Descripcion" class="form-control" style="resize:none" ></textarea>
+                    </div>
+
+                    <!-- Sección de auditoría -->
+                    <div id="auditoriaInfo" class="border-top pt-3 bg-light text-muted small p-2 rounded mt-4" style="display: none;">
+                        <p class="mb-1 text-muted small">
+                            <i class="bi bi-clock-history"></i>
+                            <strong>Creado:</strong> <span id="infoCreado"></span>
+                        </p>
+                        <p class="mb-1 text-muted small">
+                            <i class="bi bi-pencil"></i>
+                            <strong>Modificado:</strong> <span id="infoModificado"></span>
+                        </p>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" id="btnGuardar">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="usuariosSistemaModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="usuariosSistemaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="usuariosSistemaLabel">Usuarios del Sistema: @ViewBag.NombreSistema</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="contenedorUsuarios">
+                    <!-- Aquí se cargará la tabla de usuarios via fetch -->
+                    <div class="text-center my-4">
+                        <div class="spinner-border" role="status"></div>
+                        <p class="mt-2">Cargando usuarios...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="tokenForm">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        function mostrarAdvertencia() {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Sistema inactivo',
+                text: 'No puede gestionar roles ni objetos porque el sistema está inactivo.',
+                confirmButtonText: 'Entendido',
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            });
+        }
+    </script>
+
+    <script>
+        document.getElementById("formCrearSistema").addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const nombre = document.getElementById("Nombre").value.trim();
+            const descripcion = document.getElementById("Descripcion").value.trim();
+
+            if (!nombre || !descripcion) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campos incompletos',
+                    text: 'Por favor complete todos los campos antes de guardar.',
+                    confirmButtonText: 'Entendido',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Deseas guardar los cambios?',
+                text: "Confirma que los datos son correctos antes de continuar.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, guardar',
+                cancelButtonText: 'Cancelar',
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formData = new FormData(e.target);
+                    const data = {};
+
+                    formData.forEach((value, key) => {
+                        data[key] = value;
+                    });
+
+                    const url = data.IdSistema && data.IdSistema !== "0"
+                        ? '@Url.Action("Editar", "Sistema")'
+                        : '@Url.Action("Crear", "Sistema")';
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(resp => {
+                        if (!resp.ok) throw new Error("Error en guardar/editar");
+                        return resp.json();
+                    })
+                    .then(json => {
+                        if (json.success) {
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('crearSistemaModal'));
+                            modal.hide();
+
+                            Swal.fire({
+                                title: 'Procesando...',
+                                html: 'Por favor espera un momento.',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                }
+                            });
+
+                            setTimeout(() => {
+                                Swal.close();
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Éxito',
+                                    text: json.mensaje || 'Operación realizada correctamente.',
+                                    confirmButtonText: 'Aceptar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            }, 3000);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: json.mensaje || 'Ocurrió un error.',
+                                confirmButtonText: 'Aceptar',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error del servidor',
+                            text: 'Ocurrió un error inesperado al procesar la solicitud.',
+                            confirmButtonText: 'Aceptar',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false
+                        });
+                    });
+                }
+            });
+        });
+    </script>
+
+    <script>
+        // Inicializa tooltips de Bootstrap
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        function formatearFecha(fechaISO) {
+            const fecha = new Date(fechaISO);
+            const dia = String(fecha.getDate()).padStart(2, '0');
+            const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+            const anio = fecha.getFullYear();
+
+            let horas = fecha.getHours();
+            const minutos = String(fecha.getMinutes()).padStart(2, '0');
+            const segundos = String(fecha.getSeconds()).padStart(2, '0');
+            const ampm = horas >= 12 ? 'PM' : 'AM';
+
+            horas = horas % 12 || 12; // convertir a formato 12h
+            horas = String(horas).padStart(2, '0');
+
+            return `${dia}-${mes}-${anio} ${horas}:${minutos}:${segundos} ${ampm}`;
+        }
+
+        // Función de ejemplo para editar
+        function editarSistema(id) {
+            fetch(`/SASI/Sistema/ObtenerPorId/${id}`)
+                .then(resp => resp.json())
+                .then(data => {
+                    document.getElementById("crearSistemaLabel").textContent = "Editar Sistema";
+                    document.getElementById("IdSistema").value = data.idSistema;
+                    document.getElementById("Codigo").value = data.codigo;
+                    document.getElementById("Codigo").readOnly = true;
+                    document.getElementById("Nombre").value = data.nombre;
+                    document.getElementById("Descripcion").value = data.descripcion;
+
+                    // Mostrar auditoría si existen datos
+                    const auditoriaDiv = document.getElementById("auditoriaInfo");
+
+                    if (data.auditUsuarioCreacion && data.auditUsuarioCreacion) {
+                        document.getElementById("infoCreado").textContent =
+                            `${formatearFecha(data.auditFechaCreacion)} - ${data.auditUsuarioCreacion}`;
+                    }
+
+                    if (data.auditFechaModificacion && data.auditUsuarioModificacion) {
+                        document.getElementById("infoModificado").textContent =
+                            `${formatearFecha(data.auditFechaModificacion)} - ${data.auditUsuarioModificacion}`;
+                    }
+
+                    // Mostrar la sección de auditoría
+                    auditoriaDiv.style.display = "block";
+
+                    const modal = new bootstrap.Modal(document.getElementById('crearSistemaModal'));
+                    modal.show();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("No se pudo cargar el sistema");
+                });
+        }
+
+        function toggleEstadoSistema(id, estadoActual) {
+            const activar = !estadoActual;
+
+            Swal.fire({
+                title: activar ? '¿Habilitar sistema?' : '¿Deshabilitar sistema?',
+                text: activar ? "El sistema será habilitado." : "El sistema será desactivado.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: activar ? 'Sí, habilitar' : 'Sí, deshabilitar',
+                cancelButtonText: 'Cancelar',
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Procesando...',
+                        text: 'Por favor espera un momento.',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    setTimeout(() => {
+                        fetch(`/SASI/Sistema/ActualizarEstado/${id}`, {
+                            method: 'POST',
+                            headers: {
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            }
+                        })
+                        .then(resp => resp.json())
+                        .then(data => {
+                            Swal.fire({
+                                icon: data.success ? 'success' : 'error',
+                                title: data.success ? (activar ? 'Sistema habilitado' : 'Sistema deshabilitado') : 'Error',
+                                text: data.message || '',
+                                confirmButtonText: 'Aceptar',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false
+                            }).then(result => {
+                                if (data.success && result.isConfirmed) {
+                                    location.reload();
+                                }
+                            });
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error del servidor',
+                                text: 'Ocurrió un error al actualizar el estado.',
+                                confirmButtonText: 'Aceptar',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false
+                            });
+                        });
+                    }, 3000);
+                }
+            });
+        }
+
+        function eliminarSistema(id) {
+                Swal.fire({
+                    title: '¿Estás seguro?',
+                    text: "Esta acción desactivará el sistema.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/Sistema/Eliminar/${id}`, {
+                            method: 'POST',
+                            headers: {
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            }
+                        })
+                        .then(resp => {
+                            if (!resp.ok) throw new Error("Error en la respuesta del servidor");
+                            return resp.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire(
+                                    'Desactivado',
+                                    'El sistema ha sido desactivado correctamente.',
+                                    'success'
+                                ).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Error', data.mensaje || 'No se pudo eliminar el sistema.', 'error');
+                            }
+                        })
+                        .catch(err => {
+                            Swal.fire('Error', 'Ocurrió un error al eliminar.', 'error');
+                            console.error(err);
+                        });
+                    }
+                });
+        }
+
+        document.getElementById('crearSistemaModal').addEventListener('hidden.bs.modal', function () {
+            document.getElementById("formCrearSistema").reset();
+            document.getElementById("IdSistema").value = 0;
+            document.getElementById("crearSistemaLabel").textContent = "Nuevo Sistema";
+
+            // Ocultar auditoría
+            document.getElementById("auditoriaInfo").style.display = "none";
+            document.getElementById("infoCreado").textContent = "";
+            document.getElementById("infoModificado").textContent = "";
+        });
+
+        document.getElementById('crearSistemaModal').addEventListener('show.bs.modal', function () {
+            // Solo si estamos en modo "crear"
+            const idSistema = document.getElementById("IdSistema").value;
+
+            if (!idSistema || idSistema === "0") {
+                fetch('/SASI/Sistema/ObtenerProximoCodigo')
+                    .then(resp => resp.json())
+                    .then(data => {
+                        document.getElementById("Codigo").value = data.codigo;
+                    })
+                    .catch(err => {
+                        console.error("Error al obtener código:", err);
+                        document.getElementById("Codigo").value = "N/D";
+                    });
+            }
+        });
+    </script>
+
+    <script>
+        function mostrarUsuarios(idSistema) {
+            const modal = new bootstrap.Modal(document.getElementById('usuariosSistemaModal'));
+            const contenedor = document.getElementById("contenedorUsuarios");
+            const titulo = document.getElementById("usuariosSistemaLabel");
+
+            contenedor.innerHTML = `
+                <div class="text-center my-4">
+                    <div class="spinner-border" role="status"></div>
+                    <p class="mt-2">Cargando usuarios...</p>
+                </div>
+            `;
+
+            fetch(`/SASI/Sistema/UsuariosPorSistema?sistemaId=${idSistema}`)
+                .then(resp => resp.json())
+                .then(data => {
+                    contenedor.innerHTML = data.html;
+                    titulo.textContent = `Usuarios del sistema: ${data.nombreSistema}`;
+                    asignarEventosPaginacion(idSistema);
+                })
+                .catch(err => {
+                    console.error("Error al cargar usuarios:", err);
+                    contenedor.innerHTML = `<div class="alert alert-danger">Ocurrió un error al cargar los usuarios.</div>`;
+                });
+
+            modal.show();
+        }
+
+        function asignarEventosPaginacion(sistemaId) {
+            document.querySelectorAll("#contenedorUsuarios .pagination a").forEach(link => {
+                link.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const url = new URL(link.href);
+                    const page = url.searchParams.get("page");
+
+                    fetch(`/SASI/Sistema/UsuariosPorSistema?sistemaId=${sistemaId}&page=${page}`)
+                        .then(resp => resp.json())
+                        .then(data => {
+                            document.getElementById("contenedorUsuarios").innerHTML = data.html;
+                            document.getElementById("usuariosSistemaLabel").textContent = `Usuarios del sistema: ${data.nombreSistema}`;
+                            asignarEventosPaginacion(sistemaId);
+                        });
+                });
+            });
+        }
+    </script>
+}

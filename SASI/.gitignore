@@ -1,0 +1,24 @@
+## Build results
+bin/
+obj/
+
+## Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Logs
+*.log
+
+## ASP.NET
+appsettings.json
+appsettings.*.json
+!appsettings.json.example
+
+## Packages
+packages/
+
+## Others
+node_modules/

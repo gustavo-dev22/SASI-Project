@@ -1,0 +1,23 @@
+﻿@model SASI.Dominio.Modelo.Rol
+
+<form id="formCrearRol" asp-action="@(Model.IdRol == 0 ? "Crear" : "Editar")" method="post">
+    <input type="hidden" asp-for="IdRol" />
+    <input type="hidden" asp-for="IdSistema" />
+
+    <div class="modal-header">
+        <h5 class="modal-title">@((Model.IdRol == 0 ? "Nuevo Rol" : "Editar Rol"))</h5>
+    </div>
+
+    <div class="modal-body">
+        <div class="mb-3">
+            <label asp-for="Nombre" class="form-label"></label>
+            <input asp-for="Nombre" class="form-control" />
+            <span asp-validation-for="Nombre" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+    </div>
+</form>

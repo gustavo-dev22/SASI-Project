@@ -1,0 +1,61 @@
+﻿@using SASI.Dominio.Modelo
+@using System.ComponentModel.DataAnnotations
+
+@model ObjetoViewModel
+
+<form id="formCrearObjeto" asp-action="@(Model.IdObjeto == 0 ? "Crear" : "Editar")" method="post">
+    <input type="hidden" asp-for="IdSistema" />
+    <input type="hidden" asp-for="IdObjeto" />
+
+    <div class="modal-header">
+        <h5 class="modal-title">@(Model.IdObjeto == 0 ? "Nuevo Objeto" : "Editar Objeto")</h5>
+    </div>
+
+    <div class="modal-body">
+        <div class="mb-3">
+            <label asp-for="Nombre" class="form-label"></label>
+            <input asp-for="Nombre" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Tipo" class="form-label"></label>
+            <select asp-for="Tipo" class="form-select" id="Tipo" asp-items="@(new SelectList(Enum.GetValues(typeof(TipoObjeto)).Cast<TipoObjeto>().Select(e =>
+                                                                          new SelectListItem
+                                                                          {
+                                                                              Value = e.ToString(),
+                                                                              Text = e.GetType().GetField(e.ToString())
+                                                                                      ?.GetCustomAttributes(typeof(DisplayAttribute), false)
+                                                                                      .Cast<DisplayAttribute>()
+                                                                                      .FirstOrDefault()?.Name ?? e.ToString()
+                                                                          }), "Value", "Text"))">
+                <option value="">-- Seleccione un tipo --</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Url" class="form-label"></label>
+            <input asp-for="Url" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Titulo" class="form-label"></label>
+            <input asp-for="Titulo" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Icono" class="form-label"></label>
+            <input asp-for="Icono" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Orden" class="form-label"></label>
+            <input asp-for="Orden" class="form-control" type="number"/>
+        </div>
+        <div class="mb-3" id="divPadre" style="display: none;">
+            <label asp-for="IdPadre" class="form-label">Objeto Padre</label>
+            <select asp-for="IdPadre" class="form-select" name="IdPadre" asp-items="Model.ObjetosPadre">
+                <option value="">-- Seleccione objeto padre --</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+    </div>
+</form>

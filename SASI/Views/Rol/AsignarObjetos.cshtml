@@ -1,0 +1,155 @@
+﻿@using SASI.Dominio.Modelo
+
+@model AsignarObjetosViewModel
+
+<style>
+    .nodo-padre > a {
+        font-weight: bold;
+        color: #0d6efd; /* azul Bootstrap */
+    }
+
+    .nodo-hijo > a {
+        color: #6c757d; /* gris Bootstrap */
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="card shadow rounded-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Asignar Objetos al Rol: <strong>@Model.NombreRol</strong></h5>
+            <a asp-action="Index" asp-route-sistemaId="@ViewBag.SistemaId" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-arrow-left-circle"></i> Regresar
+            </a>
+        </div>
+        <div class="card-body">
+            <form id="formAsignarObjetos" method="post" asp-action="GuardarAsignacionObjetos">
+                <input type="hidden" name="IdRol" value="@Model.IdRol" />
+
+                <div id="jstree-container" class="border rounded p-3"></div>
+
+                <div class="mt-4 text-end">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-save"></i> Guardar Asignación
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Generar datos jerárquicos para jsTree desde Razor
+            const data = [
+                @foreach (var obj in Model.Objetos)
+                {
+                        var parentId = obj.IdPadre.HasValue ? obj.IdPadre.ToString() : "#";
+                        var selected = Model.IdsAsignados.Contains(obj.IdObjeto) ? "true" : "false";
+                        <text>
+                        {
+                            "id": "@obj.IdObjeto",
+                            "parent": "@parentId",
+                            "text": "@obj.Nombre",
+                            "icon": "@(obj.IdPadre == null ? "bi bi-folder-fill text-primary" : "bi bi-file-earmark text-secondary")",
+                            "li_attr": { "class": "@(obj.IdPadre == null ? "nodo-padre" : "nodo-hijo")" },
+                            "state": { "selected": @selected.ToLower() }
+                        },
+                        </text>
+                }
+            ];
+
+            $('#jstree-container').jstree({
+                'core': {
+                    'data': data,
+                    'themes': {
+                        'responsive': true
+                    }
+                },
+                'plugins': ['checkbox']
+            }).on('ready.jstree', function () {
+                // Expande todos los nodos cuando el árbol esté listo
+                $('#jstree-container').jstree('open_all');
+            });
+
+            // Capturar IDs seleccionados antes de enviar
+            document.getElementById('formAsignarObjetos').addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const selectedIds = $('#jstree-container').jstree("get_checked");
+
+                if (selectedIds.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sin selección',
+                        text: 'Debe seleccionar al menos un objeto para asignar.',
+                        confirmButtonText: 'Aceptar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
+                    return;
+                }
+
+                Swal.fire({
+                    title: '¿Desea guardar las asignaciones?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Eliminar campos anteriores
+                        document.querySelectorAll("input[name='IdsAsignados']").forEach(n => n.remove());
+
+                        // Agregar nuevamente los seleccionados
+                        selectedIds.forEach(id => {
+                            const input = document.createElement("input");
+                            input.type = "hidden";
+                            input.name = "IdsAsignados";
+                            input.value = id;
+                            e.target.appendChild(input);
+                        });
+
+                        const formData = new FormData(e.target);
+
+                        fetch(e.target.action, {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Swal.fire({
+                                //     icon: 'success',
+                                //     title: 'Asignación exitosa',
+                                //     text: 'Los objetos fueron asignados correctamente.',
+                                //     confirmButtonText: 'Aceptar',
+                                //     allowOutsideClick: false,
+                                //     allowEscapeKey: false
+                                // }).then(() => {
+                                //     window.location.href = data.redirectUrl;
+                                // });
+
+                                mostrarSpinnerYMensaje({
+                                    mensajeExito: 'Los objetos fueron asignados correctamente.',
+                                    callbackFinal: () => location.reload()
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Ocurrió un problema al guardar la asignación.',
+                                    confirmButtonText: 'Aceptar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+}

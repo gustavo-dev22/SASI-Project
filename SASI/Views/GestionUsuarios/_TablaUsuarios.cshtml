@@ -1,0 +1,56 @@
+﻿@using SASI.Infraestructura.Identity
+
+@model List<ApplicationUser>
+
+<table class="table table-bordered">
+    <thead class="table-header-custom">
+        <tr>
+            <th>Nombre Completo</th>
+            <th>Email</th>
+            <th style="text-align:center">Nombre de Usuario</th>
+            <th style="text-align:center">Intentos Fallidos</th>
+            <th style="text-align:center">Bloqueado</th>
+            <th style="text-align:center">Activo</th>
+            <th style="text-align:center">Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Model.Any())
+        {
+            <tr>
+                <td colspan="7" class="text-center">No se encontraron usuarios.</td>
+            </tr>
+        }
+        else
+        {
+            @foreach (var u in Model)
+            {
+                <tr>
+                    <td>@u.NombreCompleto</td>
+                    <td>@u.Email</td>
+                    <td style="text-align:center">@u.UserName</td>
+                    <td style="text-align:center">@u.IntentosFallidosConsecutivos</td>
+                    <td class="text-center">
+                        <input type="checkbox" disabled @(u.LockoutEnabled && u.LockoutEnd != null && u.LockoutEnd > DateTime.UtcNow ? "checked" : "") />
+                    </td>
+                    <td class="text-center">
+                        <input type="checkbox" disabled @(u.Activo ? "checked" : "") />
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-primary me-1" onclick="editarUsuario('@u.Id')">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+
+                        <button class="btn btn-sm btn-warning me-1" onclick="abrirModalAsignacion('@u.Id')">
+                            <i class="bi bi-link"></i>
+                        </button>
+
+                        <button class="btn btn-sm btn-info" onclick="verSistemas('@u.Id')">
+                            <i class="bi bi-list-check"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>

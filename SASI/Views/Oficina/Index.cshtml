@@ -1,0 +1,446 @@
+﻿@model IPagedList<OficinaViewModel>
+
+@using SASI.Dominio.Modelo
+@using X.PagedList
+@using X.PagedList.Mvc.Core
+
+@{
+    ViewData["Title"] = "Listado de Oficinas";
+}
+
+<style>
+    .truncate-text {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-5">
+    <h2 class="mb-0">Listado de Oficinas <span class="text-muted fs-5">(@ViewBag.Total)</span></h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearOficinaModal">
+        <i class="bi bi-plus-lg"></i> Nueva Oficina
+    </button>
+</div>
+
+<table class="table table-bordered table-hover" style="width:100%">
+    <thead class="table-header-custom">
+        <tr>
+            <th width="2%" style="text-align:center; vertical-align:middle">#</th>
+            <th width="42%" style="text-align:center; vertical-align:middle">Nombre</th>
+            <th width="20%" style="text-align:center; vertical-align:middle">Sigla</th>
+            <th style="text-align:center; vertical-align:middle">Activo</th>
+            <th width="19%" class="text-center" style="text-align:center; vertical-align:middle">Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{
+            int index = ((ViewBag.PageNumber - 1) * ViewBag.PageSize) + 1;
+        }
+
+        @foreach (var oficina in Model)
+        {
+            <tr class="@(oficina.Activo ? "" : "table-danger")">
+                <td style="text-align:center; vertical-align:middle; font-weight:bold">@index</td>
+                <td title="@oficina.Nombre" class="truncate-text" style="vertical-align:middle">@oficina.Nombre</td>
+                <td style="vertical-align:middle">@oficina.Sigla</td>
+                <td style="text-align:center; vertical-align:middle">
+                    @(oficina.Activo ? "SI" : "NO")
+                </td>
+                <td class="text-center" style="vertical-align:middle">
+                    <button type="button" class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="tooltip" title="Editar"
+                            onclick="editarOficina(@oficina.IdOficina)">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    
+                    <button type="button"
+                            class="btn btn-sm @(oficina.Activo ? "btn-outline-danger" : "btn-outline-success") me-1"
+                            data-bs-toggle="tooltip"
+                            title="@(oficina.Activo ? "Desactivar Oficina" : "Habilitar Oficina")"
+                            onclick="toggleEstadoOficina(@oficina.IdOficina, @(oficina.Activo.ToString().ToLower()))">
+                        <i class="bi @(oficina.Activo ? "bi-x-circle" : "bi-check-circle")"></i>
+                    </button>
+                </td>
+            </tr>
+            index++;
+        }
+    </tbody>
+</table>
+
+<div class="mt-3 text-end">
+    <span class="badge bg-success me-2 px-3 py-2">
+        <i class="bi bi-check-circle-fill"></i> Activos: @ViewBag.TotalActivos
+    </span>
+    <span class="badge bg-danger px-3 py-2">
+        <i class="bi bi-x-circle-fill"></i> Inactivos: @ViewBag.TotalInactivos
+    </span>
+</div>
+
+<!-- Controles de paginación -->
+<div class="d-flex justify-content-center">
+    @Html.PagedListPager(Model, page => Url.Action("Index", new { page }),
+    new PagedListRenderOptions
+    {
+        DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+        DisplayLinkToLastPage = PagedListDisplayMode.Always,
+        DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+        DisplayLinkToNextPage = PagedListDisplayMode.Always,
+        UlElementClasses = new[] { "pagination" },
+        LiElementClasses = new[] { "page-item" },
+        PageClasses = new[] { "page-link" }
+    })
+</div>
+
+<div class="modal fade" id="crearOficinaModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="crearOficinaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="formCrearOficina">
+
+                <input type="hidden" id="IdOficina" name="IdOficina" value="0" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="crearOficinaLabel">Nueva Oficina</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" id="Nombre" name="Nombre" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sigla</label>
+                        <input type="text" id="Sigla" name="Sigla" class="form-control" />
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input class="form-check-input" type="checkbox" id="TieneOficinaPadre" name="TieneOficinaPadre">
+                        <label class="form-check-label" for="TieneOficinaPadre">
+                            ¿Tiene oficina padre?
+                        </label>
+                    </div>
+
+                    <div class="mb-3" id="contenedorOficinaPadre" style="display:none;">
+                        <label class="form-label">Oficina Padre</label>
+                        <select id="IdOficinaPadre" name="IdOficinaPadre" class="form-select">
+                            <option value="">Seleccione...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary" id="btnGuardar">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<form id="tokenForm">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+
+        document.getElementById("formCrearOficina").addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const nombre = document.getElementById("Nombre").value.trim();
+            const sigla = document.getElementById("Sigla").value.trim();
+            const tieneOficinaPadre = document.getElementById("TieneOficinaPadre").checked;
+            const oficinaPadreSelect = document.getElementById("IdOficinaPadre");
+
+            if (!nombre || !sigla) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campos incompletos',
+                    text: 'Por favor complete todos los campos antes de guardar.',
+                    confirmButtonText: 'Entendido',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+                return;
+            }
+
+            if (tieneOficinaPadre) {
+                const oficinaPadreValor = oficinaPadreSelect.value;
+                if (!oficinaPadreValor || oficinaPadreValor === "0") {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Seleccione una oficina padre',
+                        text: 'Debe elegir una oficina de la lista antes de continuar.',
+                        confirmButtonText: 'Entendido',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
+                    return;
+                }
+            }
+
+            Swal.fire({
+                title: '¿Deseas guardar los cambios?',
+                text: "Confirma que los datos son correctos antes de continuar.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, guardar',
+                cancelButtonText: 'Cancelar',
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formData = new FormData(e.target);
+                    const data = {};
+
+                    formData.forEach((value, key) => {
+                        data[key] = value;
+                    });
+
+                    // Checkbox: "¿Tiene oficina padre?"
+                    const tienePadre = document.getElementById("TieneOficinaPadre").checked;
+
+                    // EsOficinaPrincipal es el opuesto de "tiene padre"
+                    data.TieneOficinaPadre = !tienePadre;
+
+                    // IdOficinaPadre debe ser número o null (no enviar string)
+                    const valPadre = document.getElementById("IdOficinaPadre").value;
+                    data.IdOficinaPadre = (tienePadre && valPadre) ? parseInt(valPadre, 10) : null;
+
+                    data.Activo = true;
+
+                    const url = data.IdOficina && data.IdOficina !== "0"
+                        ? '@Url.Action("Editar", "Oficina")'
+                        : '@Url.Action("Crear", "Oficina")';
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    })
+                    .then(resp => {
+                        if (!resp.ok) throw new Error("Error en guardar/editar");
+                        return resp.json();
+                    })
+                    .then(json => {
+                        if (json.success) {
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('crearOficinaModal'));
+                            modal.hide();
+
+                            Swal.fire({
+                                title: 'Procesando...',
+                                html: 'Por favor espera un momento.',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                didOpen: () => {
+                                    Swal.showLoading();
+                                }
+                            });
+
+                            setTimeout(() => {
+                                Swal.close();
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Éxito',
+                                    text: json.mensaje || 'Operación realizada correctamente.',
+                                    confirmButtonText: 'Aceptar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            }, 3000);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: json.mensaje || 'Ocurrió un error.',
+                                confirmButtonText: 'Aceptar',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error del servidor',
+                            text: 'Ocurrió un error inesperado al procesar la solicitud.',
+                            confirmButtonText: 'Aceptar',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false
+                        });
+                    });
+                }
+            });
+        });
+
+        function toggleEstadoOficina(id, estadoActual) {
+            const activar = !estadoActual;
+
+            Swal.fire({
+                title: activar ? '¿Habilitar oficina?' : '¿Deshabilitar oficina?',
+                text: activar ? "La oficina será habilitada." : "La oficina será desactivado.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: activar ? 'Sí, habilitar' : 'Sí, deshabilitar',
+                cancelButtonText: 'Cancelar',
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Procesando...',
+                        text: 'Por favor espera un momento.',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    setTimeout(() => {
+                        fetch(`/SASI/Oficina/ActualizarEstado/${id}`, {
+                            method: 'POST',
+                            headers: {
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+                            }
+                        })
+                        .then(resp => resp.json())
+                        .then(data => {
+                            Swal.fire({
+                                icon: data.success ? 'success' : 'error',
+                                title: data.success ? (activar ? 'Oficina habilitada' : 'Oficina deshabilitada') : 'Error',
+                                text: data.message || '',
+                                confirmButtonText: 'Aceptar',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false
+                            }).then(result => {
+                                if (data.success && result.isConfirmed) {
+                                    location.reload();
+                                }
+                            });
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error del servidor',
+                                text: 'Ocurrió un error al actualizar el estado.',
+                                confirmButtonText: 'Aceptar',
+                                allowOutsideClick: false,
+                                allowEscapeKey: false
+                            });
+                        });
+                    }, 3000);
+                }
+            });
+        }
+
+        document.getElementById("TieneOficinaPadre").addEventListener("change", function () {
+            const contenedor = document.getElementById("contenedorOficinaPadre");
+
+            if (this.checked) {
+                contenedor.style.display = "block";
+                cargarOficinasPadre();
+            } else {
+                contenedor.style.display = "none";
+                document.getElementById("IdOficinaPadre").innerHTML = '<option value="">Seleccione...</option>';
+            }
+        });
+
+        function cargarOficinasPadre() {
+            return fetch('@Url.Action("Listar", "Oficina")')
+                .then(resp => {
+                    if (!resp.ok) throw new Error("Error al obtener oficinas");
+                    return resp.json();
+                })
+                .then(data => {
+                    const select = document.getElementById("IdOficinaPadre");
+                    select.innerHTML = '<option value="">Seleccione...</option>';
+                    data.forEach(oficina => {
+                        const option = document.createElement("option");
+                        option.value = oficina.idOficina;
+                        option.textContent = oficina.nombre;
+                        select.appendChild(option);
+                    });
+                })
+                .catch(err => {
+                    console.error(err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudieron cargar las oficinas',
+                        confirmButtonText: 'Aceptar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
+                });
+        }
+
+        function editarOficina(id) {
+            fetch(`/SASI/Oficina/ObtenerPorId/${id}`)
+                .then(resp => resp.json())
+                .then(data => {
+                    document.getElementById("crearOficinaLabel").textContent = "Editar Oficina";
+                    document.getElementById("IdOficina").value = data.idOficina;
+                    document.getElementById("Nombre").value = data.nombre;
+                    document.getElementById("Sigla").value = data.sigla;
+
+                    // Checkbox y select de oficina padre
+                    const chkTienePadre = document.getElementById("TieneOficinaPadre");
+                    const selOficinaPadre = document.getElementById("IdOficinaPadre");
+                    const divSelectOficinaPadre = document.getElementById("contenedorOficinaPadre");
+
+                    if (data.idOficinaPadre) {
+
+                        divSelectOficinaPadre.style.display = "block";
+                        // Tiene padre → check activado y select habilitado
+                        chkTienePadre.checked = true;
+                        selOficinaPadre.disabled = false;
+                        selOficinaPadre.value = data.idOficinaPadre; // Selecciona en el combo
+
+                        cargarOficinasPadre().then(() => {
+                            selOficinaPadre.value = data.idOficinaPadre;
+                        });
+
+                    } else {
+                        divSelectOficinaPadre.style.display = "none";
+
+                        // No tiene padre → check desmarcado y select deshabilitado
+                        chkTienePadre.checked = false;
+                        selOficinaPadre.value = "0"; // Limpia la selección
+
+                        
+                    }
+
+                    const modal = new bootstrap.Modal(document.getElementById('crearOficinaModal'));
+                    modal.show();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("No se pudo cargar los datos de la oficina");
+                });
+        }
+    </script>
+
+    <script>
+        document.getElementById('crearOficinaModal').addEventListener('hidden.bs.modal', function () {
+            document.getElementById("formCrearOficina").reset();
+            document.getElementById("IdOficina").value = 0;
+            document.getElementById("crearOficinaLabel").textContent = "Nueva Oficina";
+
+            const chkTienePadre = document.getElementById("TieneOficinaPadre");
+            const selOficinaPadre = document.getElementById("IdOficinaPadre");
+            const divSelectOficinaPadre = document.getElementById("contenedorOficinaPadre");
+
+            chkTienePadre.checked = false;
+            selOficinaPadre.value = "";
+            divSelectOficinaPadre.style.display = "none";
+        });
+    </script>
+}

@@ -1,0 +1,197 @@
+﻿@model UsuarioSistemaViewModel
+
+@{
+    ViewData["Title"] = "Gestión de Roles";
+}
+
+<h2 class="mt-5">Gestión de Usuarios del Sistema: <b><u>@Model.NombreSistema</u></b></h2>
+
+<div class="d-flex justify-content-between align-items-center mb-3 mt-5">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarUsuario">Agregar Usuario</button>
+
+    <a href="@Url.Action("Index", "Sistema")" class="btn btn-secondary mb-3">
+        <i class="bi bi-arrow-left-circle"></i> Regresar
+    </a>
+</div>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Correo</th>
+            <th>Nombre</th>
+            <th>Rol</th>
+            <th>Fecha Asignación</th>
+            <th>Acción</th>
+        </tr>
+    </thead>
+    <tbody>
+        @for (int i = 0; i < Model.UsuariosAsignados.Count; i++)
+        {
+            var u = Model.UsuariosAsignados[i];
+            <tr>
+                <td>@(i + 1)</td>
+                <td>@u.Email</td>
+                <td>@u.NombreCompleto</td>
+                <td>@u.Rol</td>
+                <td>@u.FechaAsignacion.ToString("dd/MM/yyyy")</td>
+                <td>
+                    <button class="btn btn-danger btn-sm" onclick="quitarUsuario('@u.UsuarioId.ToString()')"><i class="bi bi-trash"></i></button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- Modal agregar usuario -->
+<div class="modal fade" id="modalAgregarUsuario" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formNuevoUsuario">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabel">Nuevo Usuario</h5>
+                </div>
+                <div class="modal-body">
+
+                    <input type="hidden" id="userId" name="Id" />
+
+                    <div class="mb-3">
+                        <label for="nombreCompleto" class="form-label">Nombre completo</label>
+                        <input type="text" class="form-control" id="nombreCompleto" name="NombreCompleto" style="text-transform:uppercase;">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Nombre de usuario</label>
+                        <input type="text" class="form-control" id="username" name="UserName">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Correo electrónico</label>
+                        <input type="email" class="form-control" id="email" name="Email">
+                    </div>
+
+                    <div id="camposEstado" style="display: none;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="bloqueado" name="Bloqueado">
+                            <label class="form-check-label" for="bloqueado">Bloqueado</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="activo" name="Activo">
+                            <label class="form-check-label" for="activo">Activo</label>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Registrar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+
+    let modoEdicion = false;
+
+    $(document).ready(function () {
+        $("#formNuevoUsuario").on("submit", function (e) {
+            e.preventDefault();
+
+            const datos = {
+                Id: $("#userId").val(),
+                NombreCompleto: $("#nombreCompleto").val().trim().toUpperCase(),
+                UserName: $("#username").val().trim(),
+                Email: $("#email").val().trim(),
+                Bloqueado: $("#bloqueado").is(":checked"),
+                Activo: $("#activo").is(":checked")
+            };
+
+            if (!datos.NombreCompleto || !datos.UserName || !datos.Email) {
+                Swal.fire("Campos requeridos", "Complete todos los campos.", "warning");
+                return;
+            }
+
+            const url = modoEdicion
+                        ? '@Url.Action("Editar", "GestionUsuarios")'
+                        : '@Url.Action("Crear", "GestionUsuarios")';
+
+            $.post(url, datos, function (response) {
+                Swal.fire({
+                    icon: response.success ? "success" : "error",
+                    title: response.message,
+                    confirmButtonText: "Aceptar",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then((result) => {
+                    if (response.success && result.isConfirmed) {
+                        $("#modalAgregarUsuario").modal("hide");
+                        location.reload();
+                    }
+                });
+            }).fail(() => {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: "Ocurrió un error al registrar el usuario.",
+                    confirmButtonText: "Aceptar",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+            });
+        });
+
+        // Resetear modal al cerrarse
+        $('#modalAgregarUsuario').on('hidden.bs.modal', function () {
+            modoEdicion = false;
+            $("#modalLabel").text("Nuevo Usuario");
+            $("#formNuevoUsuario button[type=submit]").text("Registrar");
+            $("#formNuevoUsuario")[0].reset();
+            $("#camposEstado").hide();
+        });
+    });
+
+    const sistemaId = @Model.SistemaId;
+
+    function quitarUsuario(idUsuario) {
+            Swal.fire({
+            title: '¿Está seguro?',
+            text: '¿Desea quitar este usuario del sistema?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, quitar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('@Url.Action("QuitarUsuarioDeSistema", "Usuario")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sistemaId: parseInt('@Model.SistemaId'),
+                        usuarioId: idUsuario
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Eliminado',
+                            text: data.message,
+                            confirmButtonText: 'OK'
+                        }).then(() => location.reload());
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message
+                        });
+                    }
+                });
+            }
+        });
+    }
+</script>
+}

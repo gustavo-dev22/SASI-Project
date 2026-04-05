@@ -1,0 +1,119 @@
+html {
+  font-size: 12px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+.table-header-custom th{
+    background-color: #0d6efd !important;
+    color: white !important;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* ====== ESTILO GLOBAL PARA MODALES ====== */
+
+/* Contorno del modal */
+.modal-content {
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Encabezado del modal */
+.modal-header {
+    background-color: #0d6efd; /* azul corporativo */
+    color: white;
+    font-weight: 600;
+    border-bottom: 1px solid #0a58ca;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+/* Cierre del modal (ícono X) */
+.modal-header .btn-close {
+    filter: invert(1);
+    opacity: 0.9;
+}
+
+/* Cuerpo del modal */
+.modal-body {
+    padding: 20px;
+}
+
+/* Footer del modal */
+.modal-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    padding: 15px 20px;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+/* Botones del modal */
+.modal-footer .btn {
+    min-width: 100px;
+}
+
+/* ====== SWEETALERT2 ESTILO PERSONALIZADO ====== */
+
+/* Fondo y contorno */
+.swal2-popup {
+    border-radius: 10px !important;
+    padding: 1.5rem !important;
+    font-family: 'Segoe UI', sans-serif;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Título */
+.swal2-title {
+    font-size: 1.4rem !important;
+    font-weight: 600 !important;
+    color: #0d6efd !important;
+    margin-bottom: 1rem !important;
+}
+
+/* Texto del contenido */
+.swal2-html-container {
+    font-size: 1rem !important;
+    color: #212529 !important;
+}
+
+/* Botones */
+.swal2-styled.swal2-confirm {
+    background-color: #0d6efd !important;
+    color: #fff !important;
+    border-radius: 6px !important;
+    padding: 0.5rem 1.5rem !important;
+    font-weight: 500 !important;
+}
+
+.swal2-styled.swal2-cancel {
+    background-color: #6c757d !important;
+    color: #fff !important;
+    border-radius: 6px !important;
+    padding: 0.5rem 1.5rem !important;
+    font-weight: 500 !important;
+}
+
+/* Íconos */
+.swal2-icon {
+    width: 60px !important;
+    height: 60px !important;
+}

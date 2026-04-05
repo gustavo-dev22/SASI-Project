@@ -379,7 +379,7 @@ namespace SASI.Controllers.API
             };
 
             // 3. Crear en AspNetUsers
-            var resultado = await _userManager.CreateAsync(usuario, dto.Dni + "Sga.");
+            var resultado = await _userManager.CreateAsync(usuario, dto.Dni + "Sga."); 
 
             if (resultado.Succeeded)
             {

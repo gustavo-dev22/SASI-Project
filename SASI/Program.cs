@@ -15,6 +15,9 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.UseUrls($"http://*:{port}");
+
 // Configurar Serilog antes de construir la app
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -65,8 +68,11 @@ builder.Services.AddTransient<IUsuarioSistemaRepository, UsuarioSistemaRepositor
 builder.Services.AddTransient<ICorrelativoRepository, CorrelativoRepository>();
 builder.Services.AddTransient<IOficinaRepository, OficinaRepository>();
 
-builder.Services.AddDataProtection()
+/*builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(@"C:\claveproteccion"))
+    .SetApplicationName("SASI");*/
+
+builder.Services.AddDataProtection()
     .SetApplicationName("SASI");
 
 builder.Services.Configure<IdentityOptions>(options =>

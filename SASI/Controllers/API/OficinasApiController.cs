@@ -203,5 +203,29 @@ namespace SASI.Controllers.API
                 datos = resultado
             });
         }
+
+        [HttpPost("por-ids")]
+        public async Task<IActionResult> GetOficinasPorIds([FromBody] List<int> ids)
+        {
+            try
+            {
+                if (ids == null || !ids.Any())
+                    return BadRequest(new { exito = false, mensaje = "Lista de IDs vacía." });
+
+                // Asumimos que tu repositorio tiene un método para filtrar por lista o usamos el ListarActivas y filtramos
+                var todas = await _oficinaRepository.ListarActivasAsync();
+                var filtradas = todas.Where(o => ids.Contains(o.IdOficina)).Select(o => new {
+                    o.IdOficina,
+                    o.Nombre,
+                    o.Sigla
+                }).ToList();
+
+                return Ok(new { exito = true, datos = filtradas });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { exito = false, error = ex.Message });
+            }
+        }
     }
 }

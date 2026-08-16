@@ -54,7 +54,7 @@ jobs:
 
       # Compila el proyecto web principal generando los binarios y el web.config
       - name: Publish SASI MVC
-        run: dotnet publish SASI/SASI/*.csproj -c Release -o ./publish-sasi
+        run: dotnet publish SASI/*.csproj -c Release -o ./publish-sasi
 
       # Sube los binarios compilados a la raíz /wwwroot/
       - name: FTP Deploy

@@ -19,6 +19,10 @@ namespace SASI.Middleware
             context.Response.Headers["X-Frame-Options"] = "SAMEORIGIN";
             context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
 
+            context.Response.Headers["Permissions-Policy"] = _esProduccion
+                ? "camera=(), microphone=(), geolocation=(), payment=(), usb=(), unload=()"
+                : "camera=(), microphone=(), geolocation=(), payment=(), usb=(), unload=(self)";
+
             context.Response.Headers["Content-Security-Policy"] = _esProduccion
                 ? "default-src 'self'; " +
                   "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +

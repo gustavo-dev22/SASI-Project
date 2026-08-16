@@ -9,7 +9,7 @@ using X.PagedList.Extensions;
 
 namespace SASI.Controllers
 {
-    [Authorize(Roles = RolesSasi.Administracion)]
+    [Authorize]
     public class OficinaController : Controller
     {
         private readonly IOficinaRepository _oficinaRepository;
@@ -19,6 +19,7 @@ namespace SASI.Controllers
             _oficinaRepository = oficinaRepository;
         }
 
+        [Authorize(Policy = "AccesoModulo")]
         public async Task<IActionResult> Index(int? page)
         {
             var oficinas = await _oficinaRepository.ListarAsync();
@@ -48,9 +49,11 @@ namespace SASI.Controllers
             return View(pagedOficinas);
         }
 
+        [Authorize(Policy = "AccesoModulo")]
         public IActionResult Crear() => View();
 
         [HttpPost]
+        [Authorize(Policy = "AccesoModulo")]
         public async Task<IActionResult> Crear([FromBody] OficinaViewModel modelo)
         {
             ModelState.Clear();
@@ -79,6 +82,7 @@ namespace SASI.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = "AccesoModulo")]
         public async Task<IActionResult> Editar([FromBody] Oficina oficina)
         {
             try
@@ -101,6 +105,7 @@ namespace SASI.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Policy = "AccesoModulo")]
         public async Task<IActionResult> ActualizarEstado(int id)
         {
             var resultado = await _oficinaRepository.ActualizarEstadoAsync(id);

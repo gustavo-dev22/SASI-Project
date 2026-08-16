@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SASI.Authorization;
 using SASI.Configuration;
 using SASI.Dominio.Repositories;
 using SASI.Filters;
@@ -142,6 +144,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
     });
+
+builder.Services.AddScoped<IAuthorizationHandler, AccesoModuloHandler>();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AccesoModulo", policy => policy.Requirements.Add(new AccesoModuloRequirement()));
+});
 
 builder.Services.AddControllersWithViews(options =>
 {

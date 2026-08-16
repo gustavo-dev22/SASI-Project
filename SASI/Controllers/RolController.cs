@@ -11,7 +11,7 @@ using X.PagedList.Extensions;
 
 namespace SASI.Controllers
 {
-    [Authorize(Roles = RolesSasi.Administracion)]
+    [Authorize(Policy = "AccesoModulo")]
     public class RolController : Controller
     {
         private readonly IRolRepository _rolRepository;

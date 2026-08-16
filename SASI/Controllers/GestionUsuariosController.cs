@@ -19,7 +19,7 @@ namespace SASI.Controllers
         public string NombreOficina { get; set; }
     }
 
-    [Authorize(Roles = RolesSasi.Administracion)]
+    [Authorize(Policy = "AccesoModulo")]
     public class GestionUsuariosController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;

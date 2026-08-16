@@ -69,7 +69,8 @@ namespace SASI.Controllers
 
             if (!result.Succeeded)
             {
-                return Json(new { success = false, tipo = "credencialesInvalidas" });
+                var intentosRestantes = Math.Max(0, _userManager.Options.Lockout.MaxFailedAccessAttempts - user.AccessFailedCount);
+                return Json(new { success = false, tipo = "credencialesInvalidas", intentosRestantes });
             }
 
             var tieneAccesoSASI = await _usuarioSistemaRepository.UsuarioTieneRolActivoEnSistemaAsync(user.Id, _sistemaId);

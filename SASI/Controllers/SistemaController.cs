@@ -10,7 +10,7 @@ using X.PagedList.Extensions;
 
 namespace SASI.Controllers
 {
-    [Authorize(Roles = RolesSasi.Administracion)]
+    [Authorize(Policy = "AccesoModulo")]
     public class SistemaController : Controller
     {
         private readonly ISistemaRepository _sistemaRepository;

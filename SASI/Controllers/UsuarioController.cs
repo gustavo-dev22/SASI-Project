@@ -9,7 +9,7 @@ using SASI.Models;
 
 namespace SASI.Controllers
 {
-    [Authorize(Roles = RolesSasi.Administracion)]
+    [Authorize(Policy = "AccesoModulo")]
     public class UsuarioController : Controller
     {
         private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;

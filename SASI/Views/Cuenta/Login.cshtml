@@ -216,10 +216,13 @@
                                 });
                                 break;
                             case "credencialesInvalidas":
+                                const tieneIntentos = data.intentosRestantes !== undefined && data.intentosRestantes !== null;
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Credenciales inválidas', 
-                                    text: `Correo o contraseña incorrectos. Intentos restantes: ${data.intentosRestantes}`,
+                                    text: tieneIntentos
+                                        ? `Correo o contraseña incorrectos. Intentos restantes: ${data.intentosRestantes}`
+                                        : 'Usuario o contraseña incorrectos',
                                     confirmButtonText: 'Aceptar',
                                     allowOutsideClick: false,
                                     allowEscapeKey: false

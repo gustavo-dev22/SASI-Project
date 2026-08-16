@@ -1,6 +1,8 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +19,8 @@ using SistemaConvocatorias.Infraestructura.Datos;
 namespace SASI.Controllers.API
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [Route("api/auth")]
     public class AuthController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -35,6 +38,7 @@ namespace SASI.Controllers.API
         }
 
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var user = await _userManager.FindByNameAsync(request.UserName); 
@@ -173,7 +177,7 @@ namespace SASI.Controllers.API
                     Tipo = o.Tipo,
                     Url = o.Url,
                     Titulo = o.Titulo,
-                    Icono = o.Icono,
+                    Icono = o.Icono ?? string.Empty,
                     Activo = o.Activo,
                     Orden = o.Orden,
                     IdPadre = o.IdPadre
@@ -358,6 +362,7 @@ namespace SASI.Controllers.API
         }
 
         [HttpPost("sga/crear-alumno")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Administrador")]
         public async Task<IActionResult> CrearAlumnoDesdeSga([FromBody] NuevoUsuarioApiRequest dto)
         {
             // 1. Validaciones de existencia
@@ -401,11 +406,9 @@ namespace SASI.Controllers.API
                     // 5. Retornar éxito al SGA
                     return Ok(new { success = true, userId = usuario.Id });
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    // Si falla la asignación del sistema, deberíamos borrar al usuario 
-                    // o manejar el error para no dejarlo a medias
-                    return StatusCode(500, new { message = "Usuario creado pero falló la asignación al sistema: " + ex.Message });
+                    return StatusCode(500, new { success = false, message = "Usuario creado pero falló la asignación al sistema." });
                 }
             }
 

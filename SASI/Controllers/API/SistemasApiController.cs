@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SASI.Dominio.Repositories;
 using SASI.Infraestructura.Repositories;
 
 namespace SASI.Controllers.API
 {
     [ApiController]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     [Route("api/sistemas")]
     public class SistemasApiController : Controller
     {
@@ -46,13 +49,12 @@ namespace SASI.Controllers.API
                     }
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     exito = false,
-                    mensaje = "Error al consultar el sistema.",
-                    error = ex.Message
+                    mensaje = "Error al consultar el sistema."
                 });
             }
         }
@@ -89,13 +91,12 @@ namespace SASI.Controllers.API
                     })
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     exito = false,
-                    mensaje = "Error al obtener los usuarios del sistema.",
-                    error = ex.Message
+                    mensaje = "Error al obtener los usuarios del sistema."
                 });
             }
         }
@@ -126,13 +127,12 @@ namespace SASI.Controllers.API
                     datos = usuarios
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     exito = false,
-                    mensaje = "Error al obtener los usuarios.",
-                    error = ex.Message
+                    mensaje = "Error al obtener los usuarios."
                 });
             }
         }

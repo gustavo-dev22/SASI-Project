@@ -110,6 +110,22 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
+var jwtKey = builder.Configuration["Jwt:Key"];
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+
+if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
+{
+    throw new InvalidOperationException(
+        "Jwt:Key no está configurado o no tiene al menos 256 bits. " +
+        "Configurelo mediante la variable de entorno Jwt__Key (o user-secrets) antes de iniciar la aplicación.");
+}
+
+if (string.IsNullOrWhiteSpace(jwtIssuer) || string.IsNullOrWhiteSpace(jwtAudience))
+{
+    throw new InvalidOperationException("Jwt:Issuer y Jwt:Audience deben estar configurados.");
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -119,11 +135,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])
-            )
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
     });
 
@@ -194,20 +208,23 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Cuenta}/{action=Login}/{id?}");
 
-app.UseSwagger(c =>
+if (app.Environment.IsDevelopment())
 {
-    c.PreSerializeFilters.Add((swaggerDoc, httpReq) =>
+    app.UseSwagger(c =>
     {
-        swaggerDoc.Servers = new List<OpenApiServer>
+        c.PreSerializeFilters.Add((swaggerDoc, httpReq) =>
         {
-            new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}/SASI" }
-        };
+            swaggerDoc.Servers = new List<OpenApiServer>
+            {
+                new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}/SASI" }
+            };
+        });
     });
-});
 
-app.UseSwaggerUI(c => {
-    c.SwaggerEndpoint("/SASI/swagger/v1/swagger.json", "SASI API V1");
-    c.RoutePrefix = "swagger";
-});
+    app.UseSwaggerUI(c => {
+        c.SwaggerEndpoint("/SASI/swagger/v1/swagger.json", "SASI API V1");
+        c.RoutePrefix = "swagger";
+    });
+}
 
 app.Run();

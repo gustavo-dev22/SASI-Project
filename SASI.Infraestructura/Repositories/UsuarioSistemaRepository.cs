@@ -188,7 +188,7 @@ namespace SASI.Infraestructura.Repositories
                                            Tipo = obj.Tipo,
                                            Url = obj.Url,
                                            Titulo = obj.Titulo,
-                                           Icono = obj.Icono,
+                                           Icono = obj.Icono ?? string.Empty,
                                            Activo = obj.Activo,
                                            Orden = obj.Orden,
                                            IdPadre = obj.IdPadre

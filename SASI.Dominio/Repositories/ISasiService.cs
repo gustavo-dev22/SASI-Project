@@ -11,6 +11,6 @@ namespace SASI.Dominio.Repositories
     {
         Task<AccesosSasiResponseDto> ObtenerAccesosUsuario(string userName, string password);
 
-        Task<AccesosSasiResponseDto> ObtenerAccesosUsuario(string userName);
+        Task<AccesosSasiResponseDto> ObtenerAccesosUsuarioConToken(string userName, string token);
     }
 }

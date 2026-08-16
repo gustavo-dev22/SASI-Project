@@ -313,9 +313,9 @@ namespace SASI.Controllers
                         errores.Add(new { Usuario = u.Usuario, Motivo = errorStr });
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    errores.Add(new { Usuario = u.Usuario, Motivo = ex.Message });
+                    errores.Add(new { Usuario = u.Usuario, Motivo = "Error inesperado al procesar el registro." });
                 }
             }
 

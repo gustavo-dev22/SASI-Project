@@ -134,6 +134,11 @@ namespace SASI.Controllers
                     // Aquí llamas al endpoint de SASI
                     var infoUsuario = await _sasiService.ObtenerAccesosUsuario(user.UserName, password);
 
+                    if (!string.IsNullOrEmpty(infoUsuario.Token))
+                    {
+                        HttpContext.Session.SetString("SasiApiToken", infoUsuario.Token);
+                    }
+
                     var sistemaActual = infoUsuario.Usuario.Sistemas
                                         .FirstOrDefault(s => s.Id == _sistemaId && s.Activo);
 
@@ -216,8 +221,13 @@ namespace SASI.Controllers
 
             var user = await _userManager.GetUserAsync(User);
 
-            // Usa el nuevo método sin password
-            var infoUsuario = await _sasiService.ObtenerAccesosUsuario(user.UserName);
+            var token = HttpContext.Session.GetString("SasiApiToken");
+            if (string.IsNullOrEmpty(token))
+            {
+                return RedirectToAction("Login", "Cuenta");
+            }
+
+            var infoUsuario = await _sasiService.ObtenerAccesosUsuarioConToken(user.UserName, token);
 
             var sistemaActual = infoUsuario.Usuario.Sistemas
                                     .FirstOrDefault(s => s.Id == _sistemaId && s.Activo);

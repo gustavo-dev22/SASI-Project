@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SASI.Dominio.Repositories;
@@ -9,7 +11,8 @@ using SASI.Models.Requests;
 namespace SASI.Controllers.API
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [Route("api/oficinas")]
     public class OficinasApiController : Controller
     {
         private readonly IOficinaRepository _oficinaRepository;
@@ -44,13 +47,12 @@ namespace SASI.Controllers.API
                     })
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     exito = false,
-                    mensaje = "Error al consultar las oficinas.",
-                    error = ex.Message
+                    mensaje = "Error al consultar las oficinas."
                 });
             }
         }
@@ -90,13 +92,12 @@ namespace SASI.Controllers.API
                     })
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     exito = false,
-                    mensaje = "Error al consultar usuarios de la oficina.",
-                    error = ex.Message
+                    mensaje = "Error al consultar usuarios de la oficina."
                 });
             }
         }
@@ -153,13 +154,12 @@ namespace SASI.Controllers.API
                     datos = remitente
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     exito = false,
-                    mensaje = "Error al obtener remitente.",
-                    error = ex.Message
+                    mensaje = "Error al obtener remitente."
                 });
             }
         }
@@ -222,9 +222,9 @@ namespace SASI.Controllers.API
 
                 return Ok(new { exito = true, datos = filtradas });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { exito = false, error = ex.Message });
+                return StatusCode(500, new { exito = false, mensaje = "Error al obtener las oficinas." });
             }
         }
     }

@@ -1,11 +1,14 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SASI.Dominio.Repositories;
 using SASI.Infraestructura.Repositories;
 
 namespace SASI.Controllers.API
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    [Route("api/objetos")]
     public class ObjetosApiController : Controller
     {
         private readonly IObjetoRepository _objetoRepository;
@@ -51,15 +54,12 @@ namespace SASI.Controllers.API
                     datos = resultado
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // Aquí puedes loguear el error si tienes logger configurado
-
                 return StatusCode(500, new
                 {
                     exito = false,
-                    mensaje = "Ocurrió un error al consultar los objetos del sistema.",
-                    error = ex.Message
+                    mensaje = "Ocurrió un error al consultar los objetos del sistema."
                 });
             }
         }
@@ -95,13 +95,12 @@ namespace SASI.Controllers.API
                     datos = resultado
                 });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new
                 {
                     exito = false,
-                    mensaje = "Ocurrió un error al consultar los roles del sistema.",
-                    error = ex.Message
+                    mensaje = "Ocurrió un error al consultar los roles del sistema."
                 });
             }
         }

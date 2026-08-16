@@ -1,4 +1,4 @@
-name: CI/CD - Build, Seguridad y Deploy SASI
+name: CI - Build y Seguridad SASI
 
 on:
   push:
@@ -7,9 +7,6 @@ on:
     branches: [ master ]
 
 jobs:
-  # ----------------------------------------------------
-  # JOB 1: Validación y Seguridad
-  # ----------------------------------------------------
   build-and-scan:
     name: Build .NET 8 y Seguridad
     runs-on: ubuntu-latest
@@ -34,69 +31,3 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ----------------------------------------------------
-  # JOB 2: Publicación y Despliegue (Solo en push a master)
-  # ----------------------------------------------------
-  deploy:
-    name: Deploy a MonsterASP
-    needs: build-and-scan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      # Compila el proyecto web principal generando los binarios y el web.config
-      - name: Publish SASI MVC
-        run: dotnet publish SASI/SASI.csproj -c Release -o ./publish-sasi
-
-      # app_offline.htm: IIS libera los DLL al detectar este archivo en la raíz.
-      # Evita el error FTP 550 "Could not access file" al reemplazar SASI.dll (bloqueado por el proceso de la app).
-      - name: Crear app_offline.htm
-        shell: pwsh
-        run: |
-          Set-Content -Path ./publish-sasi/app_offline.htm -Value '<!DOCTYPE html><html><body><h2>Mantenimiento</h2><p>Actualizando el sistema, vuelva en unos minutos.</p></body></html>' -Encoding utf8
-
-      # Detiene la app subiendo app_offline.htm y espera a que IIS libere los binarios
-      - name: Detener app (subir app_offline.htm)
-        shell: bash
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SASI_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_SASI_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_SASI_PASSWORD }}
-        run: |
-          curl -s --ftp-ssl-reqd --ftp-create-dirs -T ./publish-sasi/app_offline.htm "ftp://$FTP_SERVER/wwwroot/app_offline.htm" --user "$FTP_USERNAME:$FTP_PASSWORD" \
-            || curl -s --ftp-create-dirs -T ./publish-sasi/app_offline.htm "ftp://$FTP_SERVER/wwwroot/app_offline.htm" --user "$FTP_USERNAME:$FTP_PASSWORD"
-          sleep 15
-
-      # Sube los binarios compilados a la raíz del sitio.
-      # NOTA: se excluye web.config para no sobrescribir el configurado manualmente
-      # en producción (ahí viven las variables de entorno: Jwt__Key, ConnectionStrings__DefaultConnection, etc.).
-      - name: FTP Deploy
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SASI_SERVER }}
-          username: ${{ secrets.FTP_SASI_USERNAME }}
-          password: ${{ secrets.FTP_SASI_PASSWORD }}
-          local-dir: ./publish-sasi/
-          server-dir: /wwwroot/
-          exclude: |
-            **/web.config
-            **/app_offline.htm
-
-      # Reactiva la app eliminando app_offline.htm
-      - name: Reactivar app (quitar app_offline.htm)
-        shell: bash
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SASI_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_SASI_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_SASI_PASSWORD }}
-        run: |
-          curl -s "ftp://$FTP_SERVER" --user "$FTP_USERNAME:$FTP_PASSWORD" --ftp-ssl-reqd --quote "DELE /wwwroot/app_offline.htm" \
-            || curl -s "ftp://$FTP_SERVER" --user "$FTP_USERNAME:$FTP_PASSWORD" --quote "DELE /wwwroot/app_offline.htm"

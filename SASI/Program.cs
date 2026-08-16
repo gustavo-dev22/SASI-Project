@@ -45,12 +45,22 @@ builder.Services.AddCors(options =>
 builder.Host.UseSerilog(); // Usar Serilog como logger
 
 builder.Services.AddDbContext<SasiDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
-    b => b.MigrationsAssembly("SASI")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        b =>
+        {
+            b.MigrationsAssembly("SASI");
+            b.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorNumbersToAdd: null);
+        }));
 
 builder.Services.AddDbContext<IdentityDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
-    b => b.MigrationsAssembly("SASI")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        b =>
+        {
+            b.MigrationsAssembly("SASI");
+            b.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorNumbersToAdd: null);
+        }));
 
 //builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
@@ -87,6 +97,12 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(10);
     options.Lockout.MaxFailedAccessAttempts = 3;
     options.Lockout.AllowedForNewUsers = true;
+
+    options.Password.RequiredLength = 8;
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = true;
 });
 
 builder.Services.ConfigureApplicationCookie(options =>
@@ -222,10 +238,10 @@ var app = builder.Build();
 app.UsePathBase("/SASI");
 
 app.UseMiddleware<SecurityHeadersMiddleware>();
+app.UseMiddleware<ExceptionProblemDetailsMiddleware>();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
 

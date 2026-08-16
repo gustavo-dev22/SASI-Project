@@ -23,7 +23,9 @@ namespace SASI.Infraestructura.Repositories
 
         public async Task<AccesosSasiResponseDto> ObtenerAccesosUsuario(string userName, string password)
         {
-            var endpoint = _configuration["SasiApi:BaseUrl"] + "/SASI/api/Auth/login";
+            var baseUrl = _configuration["SasiApi:BaseUrl"]?.TrimEnd('/');
+            var endpoint = $"{baseUrl}/SASI/api/Auth/login";
+
             var request = new { UserName = userName, Password = password };
 
             var response = await _httpClient.PostAsJsonAsync(endpoint, request);
@@ -34,14 +36,14 @@ namespace SASI.Infraestructura.Repositories
                 throw new Exception($"Error al obtener accesos desde SASI. Código: {response.StatusCode}. Detalles: {errorContent}");
             }
 
-
             var data = await response.Content.ReadFromJsonAsync<AccesosSasiResponseDto>();
             return data!;
         }
 
         public async Task<AccesosSasiResponseDto> ObtenerAccesosUsuarioConToken(string userName, string token)
         {
-            var endpoint = _configuration["SasiApi:BaseUrl"] + $"/SASI/api/Auth/accesos-usuario/{userName}";
+            var baseUrl = _configuration["SasiApi:BaseUrl"]?.TrimEnd('/');
+            var endpoint = $"{baseUrl}/SASI/api/Auth/accesos-usuario/{userName}";
 
             using var requestMessage = new HttpRequestMessage(HttpMethod.Get, endpoint);
             requestMessage.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);

@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SASI.Authorization;
+using SASI.Aplicacion.Servicios;
 using SASI.Dominio.Modelo;
-using SASI.Dominio.Repositories;
-using SASI.Infraestructura.Repositories;
 using SASI.Models;
 using X.PagedList.Extensions;
 
@@ -12,17 +10,17 @@ namespace SASI.Controllers
     [Authorize]
     public class OficinaController : Controller
     {
-        private readonly IOficinaRepository _oficinaRepository;
+        private readonly IOficinaServicio _oficinaServicio;
 
-        public OficinaController(IOficinaRepository oficinaRepository)
+        public OficinaController(IOficinaServicio oficinaServicio)
         {
-            _oficinaRepository = oficinaRepository;
+            _oficinaServicio = oficinaServicio;
         }
 
         [Authorize(Policy = "AccesoModulo")]
         public async Task<IActionResult> Index(int? page)
         {
-            var oficinas = await _oficinaRepository.ListarAsync();
+            var oficinas = await _oficinaServicio.ListarAsync();
 
             var oficinasViewModel = oficinas.Select(s => new OficinaViewModel
             {
@@ -69,7 +67,7 @@ namespace SASI.Controllers
                     IdOficinaPadre = modelo.TieneOficinaPadre ? null : modelo.IdOficinaPadre
                 };
 
-                await _oficinaRepository.CrearAsync(oficina);
+                await _oficinaServicio.CrearAsync(oficina);
 
                 return Ok(new { success = true, mensaje = "Oficina creada correctamente", idOficina = modelo.IdOficina });
             }
@@ -85,7 +83,7 @@ namespace SASI.Controllers
         {
             try
             {
-                await _oficinaRepository.Actualizar(oficina);
+                await _oficinaServicio.ActualizarAsync(oficina);
                 return Ok(new { success = true, mensaje = "Oficina editada correctamente" });
             }
             catch (Exception)
@@ -97,7 +95,7 @@ namespace SASI.Controllers
         [HttpGet]
         public async Task<IActionResult> Listar()
         {
-            var oficinas = await _oficinaRepository.ListarActivasAsync();
+            var oficinas = await _oficinaServicio.ListarActivasAsync();
             return Ok(oficinas);
         }
 
@@ -106,7 +104,7 @@ namespace SASI.Controllers
         [Authorize(Policy = "AccesoModulo")]
         public async Task<IActionResult> ActualizarEstado(int id)
         {
-            var resultado = await _oficinaRepository.ActualizarEstadoAsync(id);
+            var resultado = await _oficinaServicio.ActualizarEstadoAsync(id);
 
             return Json(new
             {
@@ -118,7 +116,7 @@ namespace SASI.Controllers
         [HttpGet]
         public async Task<IActionResult> ObtenerPorId(int id)
         {
-            var oficina = await _oficinaRepository.ObtenerPorId(id);
+            var oficina = await _oficinaServicio.ObtenerPorIdAsync(id);
             if (oficina == null)
                 return NotFound();
 

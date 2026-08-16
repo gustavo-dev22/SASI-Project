@@ -1,45 +1,20 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SASI.Authorization;
-using SASI.Dominio.Repositories;
-using SASI.Helpers;
 using SASI.Infraestructura.Identity;
-using SASI.Infraestructura.Repositories;
 using SASI.Models.Requests;
+using SASI.Servicios;
 using X.PagedList;
 
 namespace SASI.Controllers
 {
-    public class UsuarioDto
-    {
-        public string NombreCompleto { get; set; } = string.Empty;
-        public string Usuario { get; set; } = string.Empty; // esto será el UserName
-        public string Email { get; set; } = string.Empty;
-        public string NombreOficina { get; set; } = string.Empty;
-    }
-
     [Authorize(Policy = "AccesoModulo")]
     public class GestionUsuariosController : Controller
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly ISistemaRepository _sistemaRepository;
-        private readonly IRolRepository _rolRepository;
-        private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;
-        private readonly IOficinaRepository _oficinaRepository;
+        private readonly GestionUsuariosServicio _servicio;
 
-        public GestionUsuariosController(UserManager<ApplicationUser> userManager, 
-                                         ISistemaRepository sistemaRepository, 
-                                         IRolRepository rolRepository, 
-                                         IUsuarioSistemaRepository usuarioSistemaRepository, 
-                                         IOficinaRepository oficinaRepository)
+        public GestionUsuariosController(GestionUsuariosServicio servicio)
         {
-            _userManager = userManager;
-            _sistemaRepository = sistemaRepository;
-            _rolRepository = rolRepository;
-            _usuarioSistemaRepository = usuarioSistemaRepository;
-            _oficinaRepository = oficinaRepository;
+            _servicio = servicio;
         }
 
         public IActionResult Index()
@@ -50,73 +25,24 @@ namespace SASI.Controllers
         [HttpPost]
         public async Task<IActionResult> Buscar(string filtro, int page = 1)
         {
-            const int pageSize = 10;
-            if (page < 1) page = 1;
-
-            var query = _userManager.Users.Where(u => u.NombreCompleto.Contains(filtro));
-
-            var total = await query.CountAsync();
-
-            var usuarios = await query
-                .OrderBy(u => u.NombreCompleto)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var paged = await _servicio.BuscarAsync(filtro, page, 10);
 
             ViewBag.Filtro = filtro;
 
-            return PartialView("_TablaUsuarios", new StaticPagedList<ApplicationUser>(usuarios, page, pageSize, total));
+            return PartialView("_TablaUsuarios", paged);
         }
 
         [HttpPost]
         public async Task<IActionResult> Crear([FromForm] NuevoUsuarioRequest dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.UserName) ||
-                string.IsNullOrWhiteSpace(dto.NombreCompleto))
-            {
-                return Json(new { success = false, message = "Todos los campos son obligatorios." });
-            }
-
-            var existe = await _userManager.FindByEmailAsync(dto.Email);
-            if (existe != null)
-            {
-                return Json(new { success = false, message = "El correo ya está registrado." });
-            }
-
-            TimeZoneInfo peruZone = TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time");
-            DateTime horaPeru = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, peruZone);
-
-            var usuario = new ApplicationUser
-            {
-                UserName = dto.UserName,
-                Email = dto.Email,
-                NombreCompleto = dto.NombreCompleto,
-                IdOficina = dto.OficinaId,
-                AuditUsuarioCreacion = User.Identity?.Name ?? string.Empty,
-                AuditFechaCreacion = DateTime.Now,
-                IpCreacion = HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? string.Empty,
-                Activo = true,
-                IntentosFallidosConsecutivos = 0,
-                DebeCambiarPassword = true,
-                FechaUltimoCambioPassword = horaPeru,
-                LockoutEnabled = true
-            };
-
-            var resultado = await _userManager.CreateAsync(usuario, PasswordGenerator.GenerarContrasenaTemporal());
-
-            if (resultado.Succeeded)
-            {
-                return Json(new { success = true, message = "Usuario registrado correctamente." });
-            }
-
-            var errores = string.Join("; ", resultado.Errors.Select(e => e.Description));
-            return Json(new { success = false, message = "Error: " + errores });
+            var resultado = await _servicio.CrearAsync(dto, User.Identity?.Name ?? string.Empty, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty);
+            return Json(new { success = resultado.Exito, message = resultado.Mensaje });
         }
 
         [HttpGet]
         public async Task<IActionResult> Obtener(string id)
         {
-            var usuario = await _userManager.FindByIdAsync(id);
+            var usuario = await _servicio.ObtenerAsync(id);
             if (usuario == null) return NotFound();
 
             return Json(new
@@ -135,62 +61,28 @@ namespace SASI.Controllers
         [HttpPost]
         public async Task<IActionResult> Editar([FromForm] EditarUsuarioRequest dto)
         {
-            var usuario = await _userManager.FindByIdAsync(dto.Id);
-            if (usuario == null)
-                return Json(new { success = false, message = "Usuario no encontrado." });
-
-            usuario.NombreCompleto = dto.NombreCompleto;
-            usuario.Email = dto.Email;
-            usuario.IdOficina = dto.OficinaId;
-            usuario.UserName = dto.UserName;
-            usuario.NormalizedEmail = dto.Email.ToUpper();
-            usuario.NormalizedUserName = dto.Email.ToUpper();
-            usuario.Activo = dto.Activo;
-
-            usuario.AuditUsuarioModificacion = User.Identity?.Name;
-            usuario.AuditFechaModificacion = DateTime.Now;
-            usuario.IpModificacion = HttpContext.Connection.RemoteIpAddress?.ToString();
-
-            if (dto.Bloqueado)
-            {
-                usuario.IntentosFallidosConsecutivos = 3;
-                usuario.LockoutEnabled = true;
-                usuario.LockoutEnd = DateTimeOffset.MaxValue; // bloqueo manual
-            }
-            else
-            {
-                usuario.IntentosFallidosConsecutivos = 0;
-                usuario.LockoutEnabled = true; // mantener el sistema activo
-                usuario.LockoutEnd = null;     // desbloqueo
-                await _userManager.ResetAccessFailedCountAsync(usuario); // muy importante
-            }
-
-            var resultado = await _userManager.UpdateAsync(usuario);
-            if (resultado.Succeeded)
-                return Json(new { success = true, message = "Usuario actualizado correctamente." });
-
-            var errores = string.Join("; ", resultado.Errors.Select(e => e.Description));
-            return Json(new { success = false, message = errores });
+            var resultado = await _servicio.EditarAsync(dto, User.Identity?.Name ?? string.Empty, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty);
+            return Json(new { success = resultado.Exito, message = resultado.Mensaje });
         }
 
         [HttpGet]
         public async Task<IActionResult> ObtenerSistemas()
         {
-            var sistemas = await _sistemaRepository.ListarAsync();
+            var sistemas = await _servicio.ObtenerSistemasAsync();
             return Json(sistemas.Select(s => new { s.IdSistema, s.Nombre }));
         }
 
         [HttpGet]
         public async Task<IActionResult> ObtenerRolesPorSistema(int sistemaId)
         {
-            var roles = await _rolRepository.ObtenerPorSistemaId(sistemaId);
+            var roles = await _servicio.ObtenerRolesPorSistemaAsync(sistemaId);
             return Json(roles.Select(r => new { r.IdRol, r.Nombre }));
         }
 
         [HttpPost]
         public async Task<IActionResult> AsignarSistemaARol([FromForm] UsuarioSistemaRequest dto)
         {
-            var resultado = await _usuarioSistemaRepository.AsignarUsuarioASistemaAsync(dto.UsuarioId.ToString(), dto.SistemaId, dto.RolId, dto.EsPrincipal);
+            var resultado = await _servicio.AsignarSistemaARolAsync(dto.UsuarioId.ToString(), dto.SistemaId, dto.RolId, dto.EsPrincipal);
 
             return Json(new
             {
@@ -202,7 +94,7 @@ namespace SASI.Controllers
         [HttpGet]
         public async Task<IActionResult> ListarSistemasPorUsuario(Guid id)
         {
-            var asignaciones = await _usuarioSistemaRepository.ObtenerSistemasPorUsuarioAsync(id);
+            var asignaciones = await _servicio.ObtenerSistemasPorUsuarioAsync(id);
 
             var resultado = asignaciones.Select(s => new {
                 sistemaId = s.SistemaId,
@@ -220,17 +112,14 @@ namespace SASI.Controllers
         [HttpPost]
         public async Task<IActionResult> QuitarSistema([FromBody] QuitarSistemaRequest dto)
         {
-            var exito = await _usuarioSistemaRepository.QuitarUsuarioDeSistemaAsync(dto.UsuarioId, dto.SistemaId);
-            if (exito)
-                return Json(new { success = true, message = "Sistema eliminado correctamente." });
-
-            return Json(new { success = false, message = "No se pudo eliminar el sistema." });
+            var resultado = await _servicio.QuitarSistemaAsync(dto.UsuarioId, dto.SistemaId);
+            return Json(new { success = resultado.Exito, message = resultado.Mensaje });
         }
 
         [HttpPost]
         public async Task<IActionResult> CambiarEstadoSistema([FromBody] CambiarEstadoSistemaRequest dto)
         {
-            var resultado = await _usuarioSistemaRepository.ActualizarEstadoSistemaAsync(dto.UsuarioId, dto.SistemaId, dto.RolId, dto.Activo);
+            var resultado = await _servicio.CambiarEstadoSistemaAsync(dto.UsuarioId, dto.SistemaId, dto.RolId, dto.Activo);
 
             return Json(new
             {
@@ -242,7 +131,7 @@ namespace SASI.Controllers
         [HttpPost]
         public async Task<IActionResult> ActualizarRolPrincipal(Guid usuarioId, int sistemaId, int rolPrincipalId)
         {
-            await _usuarioSistemaRepository.ActualizarRolPrincipalAsync(usuarioId, sistemaId, rolPrincipalId);
+            await _servicio.ActualizarRolPrincipalAsync(usuarioId, sistemaId, rolPrincipalId);
 
             return Json(new { mensaje = "Rol principal actualizado correctamente" });
         }
@@ -253,104 +142,9 @@ namespace SASI.Controllers
             if (usuarios == null || usuarios.Count == 0)
                 return BadRequest(new { message = "No hay datos." });
 
-            int guardados = 0;
-            var errores = new List<object>();
-            var credenciales = new List<object>();
+            var resultado = await _servicio.ProcesarCargaMasivaAsync(usuarios, User.Identity?.Name ?? string.Empty, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty);
 
-            // Opcional: precargar usuarios existentes para validar duplicados rápido
-            var existentes = _userManager.Users
-                .Select(u => new { UserName = u.UserName ?? "", Email = u.Email ?? "" })
-                .ToList();
-
-            foreach (var u in usuarios)
-            {
-                try
-                {
-                    // Validaciones básicas
-                    if (string.IsNullOrWhiteSpace(u.Usuario))
-                    {
-                        errores.Add(new { Usuario = u.Usuario, Motivo = "El nombre de usuario está vacío." });
-                        continue;
-                    }
-                    if (string.IsNullOrWhiteSpace(u.Email) || !IsValidEmail(u.Email))
-                    {
-                        errores.Add(new { Usuario = u.Usuario, Motivo = "El email es inválido." });
-                        continue;
-                    }
-
-                    // Validar duplicados en base de datos
-                    if (existentes.Any(e => e.UserName == u.Usuario))
-                    {
-                        errores.Add(new { Usuario = u.Usuario, Motivo = "El nombre de usuario ya existe." });
-                        continue;
-                    }
-                    if (existentes.Any(e => e.Email == u.Email))
-                    {
-                        errores.Add(new { Usuario = u.Usuario, Motivo = "El correo ya existe." });
-                        continue;
-                    }
-
-                    // Si tienes relación oficina, busca el IdOficina
-                    var oficina = await _oficinaRepository.ObtenerPorNombre(u.NombreOficina);
-                    int? oficinaId = oficina?.IdOficina;
-
-                    // Construir nuevo usuario
-                    TimeZoneInfo peruZone = TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time");
-                    DateTime horaPeru = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, peruZone);
-
-                    var usuario = new ApplicationUser
-                    {
-                        UserName = u.Usuario,
-                        Email = u.Email,
-                        NombreCompleto = u.NombreCompleto,
-                        IdOficina = oficinaId,
-                        AuditUsuarioCreacion = User.Identity?.Name ?? string.Empty,
-                        AuditFechaCreacion = DateTime.Now,
-                        IpCreacion = HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? string.Empty,
-                        Activo = true,
-                        IntentosFallidosConsecutivos = 0,
-                        DebeCambiarPassword = true,
-                        FechaUltimoCambioPassword = horaPeru,
-                        LockoutEnabled = true
-                    };
-
-                    // Crear usuario con clave temporal segura
-                    var contrasenaTemporal = PasswordGenerator.GenerarContrasenaTemporal();
-                    var resultado = await _userManager.CreateAsync(usuario, contrasenaTemporal);
-
-                    if (resultado.Succeeded)
-                    {
-                        guardados++;
-                        credenciales.Add(new { Usuario = u.Usuario, ContrasenaTemporal = contrasenaTemporal });
-                        // actualizar cache de existentes
-                        existentes.Add(new { UserName = u.Usuario, Email = u.Email });
-                    }
-                    else
-                    {
-                        var errorStr = string.Join("; ", resultado.Errors.Select(e => e.Description));
-                        errores.Add(new { Usuario = u.Usuario, Motivo = errorStr });
-                    }
-                }
-                catch (Exception)
-                {
-                    errores.Add(new { Usuario = u.Usuario, Motivo = "Error inesperado al procesar el registro." });
-                }
-            }
-
-            return Ok(new { guardados, errores, credenciales });
-        }
-
-        private bool IsValidEmail(string email)
-        {
-            try
-            {
-                var addr = new System.Net.Mail.MailAddress(email);
-                return addr.Address == email;
-            }
-            catch
-            {
-                return false;
-            }
+            return Ok(new { guardados = resultado.Guardados, errores = resultado.Errores, credenciales = resultado.Credenciales });
         }
 
         [HttpPost]
@@ -359,13 +153,8 @@ namespace SASI.Controllers
             if (usuarios == null || usuarios.Count == 0)
                 return BadRequest("No se enviaron usuarios.");
 
-            // Busca coincidencias en AspNetUsers por UserName
-            var existentes = await _userManager.Users
-                .Where(u => usuarios.Contains(u.UserName ?? ""))
-                .Select(u => u.UserName)
-                .ToListAsync();
-
-            return Ok(existentes); // Devuelve la lista de usuarios que ya existen
+            var existentes = await _servicio.ValidarExistentesAsync(usuarios);
+            return Ok(existentes);
         }
     }
 }

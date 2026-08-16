@@ -1,22 +1,13 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using SASI.Authorization;
-using SASI.Dominio.DTO;
-using SASI.Dominio.Modelo;
-using SASI.Dominio.Repositories;
-using SASI.Helpers;
 using SASI.Infraestructura.Identity;
-using SASI.Infraestructura.Repositories;
 using SASI.Models.Requests;
 using SASI.Models.Response;
-using SistemaConvocatorias.Infraestructura.Datos;
+using SASI.Servicios;
 
 namespace SASI.Controllers.API
 {
@@ -26,25 +17,21 @@ namespace SASI.Controllers.API
     public class AuthController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IConfiguration _config;
-        private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;
-        private readonly SasiDbContext _sasiDbContext;
+        private readonly AutenticacionServicio _autenticacionServicio;
 
-        public AuthController(UserManager<ApplicationUser> userManager, IConfiguration config, IUsuarioSistemaRepository usuarioSistemaRepository, SasiDbContext sasiDbContext)
+        public AuthController(UserManager<ApplicationUser> userManager, AutenticacionServicio autenticacionServicio)
         {
             _userManager = userManager;
-            _config = config;
-            _usuarioSistemaRepository = usuarioSistemaRepository;
-            _sasiDbContext = sasiDbContext;
+            _autenticacionServicio = autenticacionServicio;
         }
 
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var user = await _userManager.FindByNameAsync(request.UserName);
+            var resultado = await _autenticacionServicio.LoginAsync(request.UserName, request.Password);
 
-            if (user == null)
+            if (resultado == null)
             {
                 return Ok(new
                 {
@@ -55,249 +42,45 @@ namespace SASI.Controllers.API
                 });
             }
 
-            if (await _userManager.IsLockedOutAsync(user))
+            return Ok(resultado);
+        }
+
+        [HttpPost("refresh")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
+        {
+            var resultado = await _autenticacionServicio.RefreshAsync(request.RefreshToken);
+
+            if (resultado == null)
             {
-                return Ok(new
-                {
-                    success = false,
-                    codigo = "CREDENCIALES_INCORRECTAS",
-                    message = "Usuario o contraseña incorrectos",
-                    bloqueado = false
-                });
+                return Unauthorized(new { success = false, message = "Refresh token inválido o expirado." });
             }
 
-            if (!await _userManager.CheckPasswordAsync(user, request.Password))
-            {
-                await _userManager.AccessFailedAsync(user);
+            return Ok(resultado);
+        }
 
-                return Ok(new
-                {
-                    success = false,
-                    codigo = "CREDENCIALES_INCORRECTAS",
-                    message = "Usuario o contraseña incorrectos",
-                    bloqueado = false
-                });
+        [HttpPost("revoke")]
+        public async Task<IActionResult> Revoke([FromBody] RefreshTokenRequest request)
+        {
+            var exito = await _autenticacionServicio.RevokeAsync(request.RefreshToken);
+
+            if (!exito)
+            {
+                return NotFound(new { success = false, message = "Refresh token no encontrado." });
             }
 
-            await _userManager.ResetAccessFailedCountAsync(user);
-
-            // Por esta línea:
-            var sistemasYRoles = await _usuarioSistemaRepository.ObtenerSistemasYRolesDelUsuarioAsync(user.Id);
-
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.UserName ?? ""),
-                new Claim(ClaimTypes.Email, user.Email ?? ""),
-                new Claim("nombreCompleto", user.NombreCompleto)
-            };
-
-            // Agregar claims personalizados por sistema
-            foreach (var grupo in sistemasYRoles.GroupBy(x => x.SistemaId))
-            {
-                var sistemaId = grupo.Key;
-                var sistemaNombre = grupo.First().SistemaNombre;
-
-                // Podrías agregar uno por rol o uno agrupado
-                foreach (var rol in grupo)
-                {
-                    claims.Add(new Claim("sistema_rol", $"{sistemaId}:{rol.RolNombre}"));
-                    claims.Add(new Claim(ClaimTypes.Role, rol.RolNombre));
-                }
-            }
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? ""));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var horasExpiracion = double.TryParse(_config["Jwt:ExpiresHours"], out var horasConfig)
-                ? horasConfig
-                : 1.0;
-            var expires = DateTime.UtcNow.AddHours(horasExpiracion);
-
-            Oficina? oficina = null;
-            if (user.IdOficina.HasValue)
-            {
-                oficina = await _sasiDbContext.Oficina
-                    .FirstOrDefaultAsync(o => o.IdOficina == user.IdOficina.Value);
-
-                if (oficina != null)
-                {
-                    claims.Add(new Claim("OficinaId", oficina.IdOficina.ToString()));
-                    claims.Add(new Claim("OficinaNombre", oficina.Nombre));
-                }
-            }
-
-            var token = new JwtSecurityToken(
-                issuer: _config["Jwt:Issuer"],
-                audience: _config["Jwt:Audience"],
-                claims: claims,
-                expires: expires,
-                signingCredentials: creds
-            );
-
-            var idsPadreGlobales = sistemasYRoles
-                .SelectMany(sr => sr.Objetos)
-                .Where(o => o.Tipo == "Submenu" && o.IdPadre != null)
-                .Select(o => o.IdPadre!.Value)
-                .Distinct()
-                .ToList();
-
-            var menusPadreGlobales = _sasiDbContext.Objetos
-                .Where(o => idsPadreGlobales.Contains(o.IdObjeto))
-                .Select(o => new ObjetoDto
-                {
-                    IdObjeto = o.IdObjeto,
-                    Nombre = o.Nombre,
-                    Tipo = o.Tipo,
-                    Url = o.Url ?? "",
-                    Titulo = o.Titulo ?? "",
-                    Icono = o.Icono ?? string.Empty,
-                    Activo = o.Activo,
-                    Orden = o.Orden,
-                    IdPadre = o.IdPadre
-                })
-                .ToList();
-
-            var sistemasEstructurados = sistemasYRoles
-                            .GroupBy(x => new { x.SistemaId, x.SistemaNombre, x.SistemaActivo })
-                            .Select(g => new {
-                                id = g.Key.SistemaId,
-                                nombre = g.Key.SistemaNombre,
-                                activo = g.Key.SistemaActivo,
-                                roles = g.Select(r =>
-                                {
-                                    // 1️⃣ Objetos asignados directamente al rol
-                                    var objetosRol = r.Objetos
-                                        .Where(o => o.Activo)
-                                        .ToList();
-
-                                    // 2️⃣ Submenus del rol
-                                    var submenus = objetosRol
-                                        .Where(o => o.Tipo == "Submenu" && o.IdPadre != null)
-                                        .ToList();
-
-                                    // 3️⃣ IDs de los menús padre
-                    var idsPadre = submenus
-                        .Select(s => s.IdPadre!.Value)
-                        .Distinct()
-                        .ToList();
-
-                                    // 4️⃣ Menús padre que NO están asignados pero son necesarios
-                                    var menusPadre = menusPadreGlobales
-                                        .Where(o => idsPadre.Contains(o.IdObjeto))
-                                        .ToList();
-
-                                    // 5️⃣ Unir todo
-                                    var objetosFinales = objetosRol
-                                        .Concat(menusPadre)
-                                        .DistinctBy(o => o.IdObjeto)
-                                        .Select(o => new {
-                                            idObjeto = o.IdObjeto,
-                                            nombre = o.Nombre,
-                                            tipo = o.Tipo,
-                                            url = o.Url,
-                                            titulo = o.Titulo,
-                                            icono = o.Icono,
-                                            activo = o.Activo,
-                                            orden = o.Orden,
-                                            idPadre = o.IdPadre
-                                        })
-                                        .ToList();
-
-                                    return new
-                                    {
-                                        idRol = r.RolId,
-                                        nombreRol = r.RolNombre,
-                                        activo = r.UsuarioSistemaRolActivo,
-                                        esPrincipal = r.EsPrincipal,
-                                        objetos = objetosFinales
-                                    };
-                                }).ToList()
-                            }).ToList();
-
-            return Ok(new
-            {
-                success = true,
-                bloqueado = false,
-                intentosFallidos = 0,
-                token = new JwtSecurityTokenHandler().WriteToken(token),
-                expiration = expires,
-                usuario = new
-                {
-                    id = user.Id,
-                    nombreCompleto = user.NombreCompleto,
-                    userName = user.UserName,
-                    email = user.Email,
-                    activo = user.Activo,
-                    oficina = oficina == null ? null : new
-                    {
-                        id = oficina.IdOficina,
-                        nombre = oficina.Nombre,
-                        sigla = oficina.Sigla
-                    },
-                    sistemas = sistemasEstructurados
-                }
-            });
+            return Ok(new { success = true, message = "Sesión revocada correctamente." });
         }
 
         [HttpGet("accesos-usuario/{userName}")]
         public async Task<IActionResult> ObtenerAccesosPorUsuario(string userName)
         {
-            var user = await _userManager.FindByNameAsync(userName);
-            if (user == null)
+            var resultado = await _autenticacionServicio.ObtenerAccesosAsync(userName);
+
+            if (resultado == null)
                 return NotFound("Usuario no encontrado");
 
-            var sistemasYRoles = await _usuarioSistemaRepository.ObtenerSistemasYRolesDelUsuarioAsync(user.Id);
-
-            Oficina? oficina = null;
-            if (user.IdOficina.HasValue)
-            {
-                oficina = await _sasiDbContext.Oficina
-                    .FirstOrDefaultAsync(o => o.IdOficina == user.IdOficina.Value);
-            }
-
-            var sistemasEstructurados = sistemasYRoles
-                .GroupBy(x => new { x.SistemaId, x.SistemaNombre, x.SistemaActivo })
-                .Select(g => new {
-                    id = g.Key.SistemaId,
-                    nombre = g.Key.SistemaNombre,
-                    activo = g.Key.SistemaActivo,
-                    roles = g.Select(r => new {
-                        idRol = r.RolId,
-                        nombreRol = r.RolNombre,
-                        activo = r.UsuarioSistemaRolActivo,
-                        esPrincipal = r.EsPrincipal,
-                        objetos = r.Objetos.Select(o => new {
-                            idObjeto = o.IdObjeto,
-                            nombre = o.Nombre,
-                            tipo = o.Tipo,
-                            url = o.Url,
-                            titulo = o.Titulo,
-                            icono = o.Icono,
-                            activo = o.Activo,
-                            orden = o.Orden,
-                            idPadre = o.IdPadre
-                        }).ToList()
-                    }).ToList()
-                }).ToList();
-
-            return Ok(new
-            {
-                usuario = new
-                {
-                    id = user.Id,
-                    nombreCompleto = user.NombreCompleto,
-                    userName = user.UserName,
-                    email = user.Email,
-                    activo = user.Activo,
-                    oficina = oficina == null ? null : new
-                    {
-                        id = oficina.IdOficina,
-                        nombre = oficina.Nombre
-                    },
-                    sistemas = sistemasEstructurados
-                }
-            });
+            return Ok(resultado);
         }
 
         [HttpGet("usuarios/{id}/basico")]
@@ -339,58 +122,15 @@ namespace SASI.Controllers.API
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = RolesSasi.Administracion)]
         public async Task<IActionResult> CrearAlumnoDesdeSga([FromBody] NuevoUsuarioApiRequest dto)
         {
-            // 1. Validaciones de existencia
-            var existe = await _userManager.FindByEmailAsync(dto.Email);
-            if (existe != null) return Conflict(new { message = "El correo ya existe" });
+            var resultado = await _autenticacionServicio.CrearAlumnoAsync(dto);
 
-            // 2. Definir el nuevo usuario
-            var usuario = new ApplicationUser
-            {
-                UserName = dto.Dni,
-                Email = dto.Email,
-                NombreCompleto = dto.NombreCompleto,
-                Activo = true,
-                AuditUsuarioCreacion = "SGA_SYSTEM",
-                AuditFechaCreacion = DateTime.Now,
-                DebeCambiarPassword = true,
-                LockoutEnabled = true,
-                IpCreacion = HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "127.0.0.1",
-                IdOficina = 9999
-            };
+            if (!resultado.Exito && resultado.Error == "El correo ya existe")
+                return Conflict(new { message = resultado.Error });
 
-            // 3. Crear en AspNetUsers con contraseña temporal segura
-            var contrasenaTemporal = PasswordGenerator.GenerarContrasenaTemporal();
-            var resultado = await _userManager.CreateAsync(usuario, contrasenaTemporal); 
+            if (!resultado.Exito && resultado.Resultado == null)
+                return BadRequest(new { success = false, message = resultado.Error });
 
-            if (resultado.Succeeded)
-            {
-                try
-                {
-                    // 4. ASIGNACIÓN EN UsuarioSistema (Configuración de acceso al SGA)
-                    var asignacion = new UsuarioSistema
-                    {
-                        UsuarioId = usuario.Id,    // El GUID recién generado
-                        SistemaId = 14,            // ID del SGA
-                        RolId = 13,                // ID del Rol Alumno
-                        FechaAsignacion = DateTime.Now,
-                        Activo = true,
-                        EsPrincipal = true
-                    };
-
-                    await _usuarioSistemaRepository.AsignarUsuarioASistemaAsync(asignacion.UsuarioId.ToString(), asignacion.SistemaId, asignacion.RolId, asignacion.EsPrincipal);
-
-                    // 5. Retornar éxito al SGA
-                    return Ok(new { success = true, userId = usuario.Id, contrasenaTemporal });
-                }
-                catch (Exception)
-                {
-                    // Rollback compensatorio: eliminar el usuario creado para no dejar registros huérfanos
-                    await _userManager.DeleteAsync(usuario);
-                    return StatusCode(500, new { success = false, message = "Usuario creado pero falló la asignación al sistema. La operación fue revertida." });
-                }
-            }
-
-            return BadRequest(new { success = false, errors = resultado.Errors });
+            return Ok(resultado.Resultado);
         }
     }
 }

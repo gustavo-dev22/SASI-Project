@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using SASI.Aplicacion.Servicios;
 using SASI.Authorization;
 using SASI.Dominio.Modelo;
-using SASI.Dominio.Repositories;
 using SASI.Helpers;
 using SASI.Models;
 using X.PagedList.Extensions;
@@ -13,20 +12,16 @@ namespace SASI.Controllers
     [Authorize(Policy = "AccesoModulo")]
     public class SistemaController : Controller
     {
-        private readonly ISistemaRepository _sistemaRepository;
-        private readonly ICorrelativoRepository _correlativoRepository;
-        private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;
+        private readonly ISistemaServicio _sistemaServicio;
 
-        public SistemaController(ISistemaRepository sistemaRepository, ICorrelativoRepository correlativoRepository, IUsuarioSistemaRepository usuarioSistemaRepository)
+        public SistemaController(ISistemaServicio sistemaServicio)
         {
-            _sistemaRepository = sistemaRepository;
-            _correlativoRepository = correlativoRepository;
-            _usuarioSistemaRepository = usuarioSistemaRepository;
+            _sistemaServicio = sistemaServicio;
         }
 
         public async Task<IActionResult> Index(int? page)
         {
-            var sistemas = await _sistemaRepository.ListarAsync(); // Esto debería incluir Estado y los roles
+            var sistemas = await _sistemaServicio.ListarAsync();
 
             // Proyección al ViewModel
             var sistemasViewModel = sistemas.Select(s => new SistemaViewModel
@@ -37,7 +32,7 @@ namespace SASI.Controllers
                 Descripcion = s.Descripcion,
                 FechaRegistro = s.FechaRegistro,
                 Estado = s.Activo,
-                CantidadRoles = s.Roles?.Count() ?? 0 // Asegúrate de que Roles esté cargado si usas EF
+                CantidadRoles = s.Roles?.Count() ?? 0
             }).ToList();
 
             // Contar los activos
@@ -61,9 +56,7 @@ namespace SASI.Controllers
         [HttpGet]
         public async Task<IActionResult> ObtenerProximoCodigo()
         {
-            var valorActual = await _correlativoRepository.ObtenerValorActualCorrelativo("Sistema");
-            var siguiente = valorActual + 1;
-            var codigo = $"SIS-{siguiente:D3}";
+            var codigo = await _sistemaServicio.ObtenerProximoCodigoAsync();
             return Ok(new { codigo });
         }
 
@@ -77,18 +70,8 @@ namespace SASI.Controllers
 
             try
             {
-                // Obtener siguiente número para la entidad "Sistema"
-                int siguienteNumero = await _correlativoRepository.ObtenerSiguienteCorrelativoAsync("Sistema");
-                string codigoGenerado = $"SIS-{siguienteNumero:D3}"; // SIS-0001, SIS-0002, etc.
-
-                // Asignar código y fecha
-                modelo.Codigo = codigoGenerado;
-                modelo.FechaRegistro = DateTime.Now;
-
-                await _sistemaRepository.CrearAsync(modelo);
-                await _correlativoRepository.ActualizarCorrelativo("Sistema", siguienteNumero);
-
-                return Ok(new { success = true, mensaje = "Sistema creado correctamente", codigo = modelo.Codigo });
+                var resultado = await _sistemaServicio.CrearAsync(modelo);
+                return Ok(new { success = true, mensaje = resultado.Mensaje, codigo = resultado.Codigo });
             }
             catch (Exception)
             {
@@ -100,7 +83,7 @@ namespace SASI.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Eliminar(int id)
         {
-            var resultado = await _sistemaRepository.EliminarAsync(id);
+            var resultado = await _sistemaServicio.EliminarAsync(id);
 
             if (!resultado.Exito)
             {
@@ -114,7 +97,7 @@ namespace SASI.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ActualizarEstado(int id)
         {
-            var resultado = await _sistemaRepository.ActualizarEstadoAsync(id);
+            var resultado = await _sistemaServicio.ActualizarEstadoAsync(id);
 
             return Json(new
             {
@@ -128,8 +111,8 @@ namespace SASI.Controllers
         {
             try
             {
-                await _sistemaRepository.Actualizar(sistema);
-                return Ok(new { success = true, mensaje = "Sistema editado correctamente" });
+                var resultado = await _sistemaServicio.ActualizarAsync(sistema);
+                return Ok(new { success = true, mensaje = resultado.Mensaje });
             }
             catch (Exception)
             {
@@ -140,7 +123,7 @@ namespace SASI.Controllers
         [HttpGet]
         public async Task<IActionResult> ObtenerPorId(int id)
         {
-            var sistema = await _sistemaRepository.ObtenerPorId(id);
+            var sistema = await _sistemaServicio.ObtenerPorIdAsync(id);
             if (sistema == null)
                 return NotFound();
 
@@ -151,9 +134,9 @@ namespace SASI.Controllers
         {
             var pageSize = 5;
 
-            var usuarios = await _usuarioSistemaRepository.ObtenerUsuariosConRolesPorSistemaAsync(sistemaId);
+            var usuarios = await _sistemaServicio.ObtenerUsuariosConRolesPorSistemaAsync(sistemaId);
 
-            var sistema = await _sistemaRepository.ObtenerPorId(sistemaId);
+            var sistema = await _sistemaServicio.ObtenerPorIdAsync(sistemaId);
 
             ViewBag.SistemaId = sistemaId;
             ViewBag.NombreSistema = sistema?.Nombre ?? "";

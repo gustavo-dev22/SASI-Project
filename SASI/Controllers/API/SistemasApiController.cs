@@ -1,8 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SASI.Dominio.Repositories;
-using SASI.Infraestructura.Repositories;
+using SASI.Aplicacion.Servicios;
 
 namespace SASI.Controllers.API
 {
@@ -11,13 +10,13 @@ namespace SASI.Controllers.API
     [Route("api/sistemas")]
     public class SistemasApiController : Controller
     {
-        private readonly ISistemaRepository _sistemaRepository;
-        private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;
+        private readonly ISistemaServicio _sistemaServicio;
+        private readonly IUsuarioSistemaServicio _usuarioSistemaServicio;
 
-        public SistemasApiController(ISistemaRepository sistemaRepository, IUsuarioSistemaRepository usuarioSistemaRepository)
+        public SistemasApiController(ISistemaServicio sistemaServicio, IUsuarioSistemaServicio usuarioSistemaServicio)
         {
-            _sistemaRepository = sistemaRepository;
-            _usuarioSistemaRepository = usuarioSistemaRepository;
+            _sistemaServicio = sistemaServicio;
+            _usuarioSistemaServicio = usuarioSistemaServicio;
         }
 
         [HttpGet("{idSistema}")]
@@ -25,7 +24,7 @@ namespace SASI.Controllers.API
         {
             try
             {
-                var sistema = await _sistemaRepository.ObtenerPorId(idSistema);
+                var sistema = await _sistemaServicio.ObtenerPorIdAsync(idSistema);
 
                 if (sistema == null)
                 {
@@ -64,8 +63,7 @@ namespace SASI.Controllers.API
         {
             try
             {
-                var usuarios = await _usuarioSistemaRepository
-                    .ObtenerUsuariosPorSistemaAsync(idSistema);
+                var usuarios = await _usuarioSistemaServicio.ObtenerUsuariosPorSistemaAsync(idSistema);
 
                 var lista = usuarios.ToList();
 
@@ -106,7 +104,7 @@ namespace SASI.Controllers.API
         {
             try
             {
-                var usuarios = await _usuarioSistemaRepository.ObtenerUsuariosPorSistemaYRolAsync(sistemaId, rolNombre);
+                var usuarios = await _usuarioSistemaServicio.ObtenerUsuariosPorSistemaYRolAsync(sistemaId, rolNombre);
 
                 var lista = usuarios.ToList();
 

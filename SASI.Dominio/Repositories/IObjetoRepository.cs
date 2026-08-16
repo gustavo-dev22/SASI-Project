@@ -15,6 +15,7 @@ namespace SASI.Dominio.Repositories
         Task ActualizarAsync(Objeto objeto);
         Task EliminarAsync(int id);
         Task<IEnumerable<Objeto>> ListarObjetosPadrePorSistemaAsync(int idSistema);
+        Task<List<Objeto>> ObtenerPorIdsAsync(List<int> ids);
         Task<bool> ExistenObjetosParaSistema(int idSistema);
     }
 }

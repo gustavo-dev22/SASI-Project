@@ -1,10 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using SASI.Authorization;
-using SASI.Dominio.Repositories;
-using SASI.Dominio.DTO;
+using SASI.Aplicacion.Servicios;
 using SASI.Models;
 
 namespace SASI.Controllers
@@ -12,25 +8,25 @@ namespace SASI.Controllers
     [Authorize(Policy = "AccesoModulo")]
     public class UsuarioController : Controller
     {
-        private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;
-        private readonly ISistemaRepository _sistemaRepository;
-        private readonly IRolRepository _rolRepository;
+        private readonly IUsuarioSistemaServicio _usuarioSistemaServicio;
+        private readonly ISistemaServicio _sistemaServicio;
+        private readonly IRolServicio _rolServicio;
 
-        public UsuarioController(IUsuarioSistemaRepository usuarioSistemaRepository, ISistemaRepository sistemaRepository, IRolRepository rolRepository)
+        public UsuarioController(IUsuarioSistemaServicio usuarioSistemaServicio, ISistemaServicio sistemaServicio, IRolServicio rolServicio)
         {
-            _usuarioSistemaRepository = usuarioSistemaRepository;
-            _sistemaRepository = sistemaRepository;
-            _rolRepository = rolRepository;
+            _usuarioSistemaServicio = usuarioSistemaServicio;
+            _sistemaServicio = sistemaServicio;
+            _rolServicio = rolServicio;
         }
 
         [HttpGet]
         public async Task<IActionResult> Index(int sistemaId)
         {
-            var sistema = await _sistemaRepository.ObtenerPorId(sistemaId);
+            var sistema = await _sistemaServicio.ObtenerPorIdAsync(sistemaId);
             if (sistema == null) return NotFound();
 
-            var usuarios = await _usuarioSistemaRepository.ObtenerUsuariosPorSistemaAsync(sistemaId);
-            var roles = await _rolRepository.ObtenerRolesComoSelectListAsync(sistema.IdSistema);
+            var usuarios = await _usuarioSistemaServicio.ObtenerUsuariosPorSistemaAsync(sistemaId);
+            var roles = await _rolServicio.ObtenerRolesComoSelectListAsync(sistema.IdSistema);
 
             var vm = new UsuarioSistemaViewModel
             {

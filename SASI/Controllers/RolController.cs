@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using SASI.Aplicacion.Servicios;
 using SASI.Authorization;
 using SASI.Dominio.Modelo;
-using SASI.Dominio.Repositories;
-using SASI.Infraestructura.Repositories;
 using SASI.Models;
 using SASI.Models.Requests;
 using X.PagedList.Extensions;
@@ -14,17 +12,13 @@ namespace SASI.Controllers
     [Authorize(Policy = "AccesoModulo")]
     public class RolController : Controller
     {
-        private readonly IRolRepository _rolRepository;
-        private readonly ISistemaRepository _sistemaRepository;
-        private readonly IObjetoRepository _objetoRepository;
-        private readonly IRolObjetoRepository _rolObjetoRepository;
+        private readonly IRolServicio _rolServicio;
+        private readonly ISistemaServicio _sistemaServicio;
 
-        public RolController(IRolRepository rolRepository, ISistemaRepository sistemaRepository, IObjetoRepository objetoRepository, IRolObjetoRepository rolObjetoRepository)
+        public RolController(IRolServicio rolServicio, ISistemaServicio sistemaServicio)
         {
-            _rolRepository = rolRepository;
-            _sistemaRepository = sistemaRepository;
-            _objetoRepository = objetoRepository;
-            _rolObjetoRepository = rolObjetoRepository;
+            _rolServicio = rolServicio;
+            _sistemaServicio = sistemaServicio;
         }
 
         public async Task<IActionResult> Index(int sistemaId, int? page)
@@ -32,8 +26,8 @@ namespace SASI.Controllers
             int pageSize = 5;
             int pageNumber = page ?? 1;
 
-            var roles = await _rolRepository.ObtenerPorSistemaId(sistemaId);
-            var sistema = await _sistemaRepository.ObtenerPorId(sistemaId);
+            var roles = await _rolServicio.ObtenerPorSistemaIdAsync(sistemaId);
+            var sistema = await _sistemaServicio.ObtenerPorIdAsync(sistemaId);
 
             if (sistema == null)
                 return NotFound();
@@ -62,27 +56,21 @@ namespace SASI.Controllers
             if (!ModelState.IsValid)
                 return PartialView("_CrearRolPartial", rol);
 
-            await _rolRepository.Crear(rol);
+            await _rolServicio.CrearAsync(rol);
             return Json(new { success = true });
         }
 
         [HttpPost]
         public async Task<IActionResult> CambiarEstado([FromBody] EliminarRolRequest request)
         {
-            var rol = await _rolRepository.ObtenerPorId(request.Id);
-            if (rol == null)
-                return Json(new { success = false });
-
-            rol.Activo = !rol.Activo;
-            await _rolRepository.Editar(rol);
-
-            return Json(new { success = true, estado = rol.Activo });
+            var resultado = await _rolServicio.CambiarEstadoAsync(request.Id);
+            return Json(new { success = resultado.Exito, estado = resultado.Estado });
         }
 
         [HttpGet]
         public async Task<IActionResult> Editar(int id)
         {
-            var rol = await _rolRepository.ObtenerPorId(id);
+            var rol = await _rolServicio.ObtenerPorIdAsync(id);
             if (rol == null)
                 return NotFound();
 
@@ -95,24 +83,24 @@ namespace SASI.Controllers
             if (!ModelState.IsValid)
                 return PartialView("_CrearRolPartial", rol);
 
-            await _rolRepository.Editar(rol);
+            await _rolServicio.EditarAsync(rol);
             return Json(new { success = true });
         }
 
         public async Task<IActionResult> AsignarObjetos(int idRol)
         {
-            var rol = await _rolRepository.ObtenerPorId(idRol);
+            var rol = await _rolServicio.ObtenerPorIdAsync(idRol);
             if (rol == null)
                 return NotFound();
 
-            var objetos = await _objetoRepository.ObtenerPorSistemaAsync(rol.IdSistema);
-            var asignados = await _rolObjetoRepository.ObtenerIdsObjetosPorRolAsync(idRol);
+            var objetos = await _rolServicio.ObtenerObjetosPorSistemaAsync(rol.IdSistema);
+            var asignados = await _rolServicio.ObtenerIdsObjetosPorRolAsync(idRol);
 
             var viewModel = new AsignarObjetosViewModel
             {
                 IdRol = idRol,
                 NombreRol = rol.Nombre,
-                Objetos = (List<Objeto>)objetos,
+                Objetos = objetos,
                 IdsAsignados = asignados
             };
 
@@ -124,7 +112,7 @@ namespace SASI.Controllers
         [HttpPost]
         public async Task<IActionResult> GuardarAsignacionObjetos(AsignarObjetosViewModel model)
         {
-            await _rolObjetoRepository.ActualizarAsignacionesAsync(model.IdRol, model.IdsAsignados);
+            await _rolServicio.GuardarAsignacionObjetosAsync(model.IdRol, model.IdsAsignados);
 
             return Json(new
             {
@@ -136,10 +124,9 @@ namespace SASI.Controllers
         [HttpGet]
         public async Task<IActionResult> ValidarObjetosPorSistema(int idRol)
         {
-            // Suponiendo que puedes obtener el IdSistema asociado al rol
-            var idSistema = _rolRepository.ObtenerIdSistemaPorRol(idRol);
+            var idSistema = _rolServicio.ObtenerIdSistemaPorRol(idRol);
 
-            var hayObjetos = await _objetoRepository.ExistenObjetosParaSistema(idSistema); // Devuelve bool
+            var hayObjetos = await _rolServicio.ExistenObjetosParaSistemaAsync(idSistema);
 
             return Json(new { existe = hayObjetos });
         }

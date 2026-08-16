@@ -1,14 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using SASI.Authorization;
+using SASI.Aplicacion.Servicios;
 using SASI.Dominio.Modelo;
-using SASI.Dominio.Repositories;
-using SASI.Infraestructura.Repositories;
 using SASI.Models;
 using SASI.Models.Requests;
-using System.Data;
 using X.PagedList.Extensions;
 
 namespace SASI.Controllers
@@ -16,13 +12,13 @@ namespace SASI.Controllers
     [Authorize(Policy = "AccesoModulo")]
     public class ObjetoController : Controller
     {
-        private readonly IObjetoRepository _objetoRepository;
-        private readonly ISistemaRepository _sistemaRepository;
+        private readonly IObjetoServicio _objetoServicio;
+        private readonly ISistemaServicio _sistemaServicio;
 
-        public ObjetoController(IObjetoRepository objetoRepository, ISistemaRepository sistemaRepository)
+        public ObjetoController(IObjetoServicio objetoServicio, ISistemaServicio sistemaServicio)
         {
-            _objetoRepository = objetoRepository;
-            _sistemaRepository = sistemaRepository;
+            _objetoServicio = objetoServicio;
+            _sistemaServicio = sistemaServicio;
         }
 
         public async Task<IActionResult> Index(int idSistema, int? page)
@@ -30,15 +26,15 @@ namespace SASI.Controllers
             int pageSize = 5;
             int pageNumber = page ?? 1;
 
-            var sistema = await _sistemaRepository.ObtenerPorId(idSistema);
+            var sistema = await _sistemaServicio.ObtenerPorIdAsync(idSistema);
             if (sistema == null)
             {
-                return NotFound(); // o redirigir a una vista de error
+                return NotFound();
             }
 
             ViewBag.Sistema = sistema;
 
-            var objetos = await _objetoRepository.ObtenerPorSistemaAsync(idSistema) ?? new List<Objeto>();
+            var objetos = await _objetoServicio.ObtenerPorSistemaAsync(idSistema);
 
             var pagedObjetos = objetos.ToPagedList(pageNumber, pageSize);
 
@@ -51,7 +47,7 @@ namespace SASI.Controllers
         [HttpGet]
         public async Task<IActionResult> Crear(int idSistema)
         {
-            var objetosPadre = await _objetoRepository.ListarObjetosPadrePorSistemaAsync(idSistema);
+            var objetosPadre = await _objetoServicio.ListarObjetosPadrePorSistemaAsync(idSistema);
 
             var viewModel = new ObjetoViewModel
             {
@@ -73,7 +69,7 @@ namespace SASI.Controllers
             if (!ModelState.IsValid)
             {
                 // Si hay error, vuelve a cargar la lista de objetos padre
-                var objetosPadre = await _objetoRepository.ListarObjetosPadrePorSistemaAsync(viewModel.IdSistema);
+                var objetosPadre = await _objetoServicio.ListarObjetosPadrePorSistemaAsync(viewModel.IdSistema);
                 viewModel.ObjetosPadre = objetosPadre.Select(o => new SelectListItem
                 {
                     Value = o.IdObjeto.ToString(),
@@ -96,13 +92,13 @@ namespace SASI.Controllers
                 IdPadre = viewModel.IdPadre
             };
 
-            await _objetoRepository.CrearAsync(objeto);
+            await _objetoServicio.CrearAsync(objeto);
             return Json(new { success = true });
         }
 
         public async Task<IActionResult> Editar(int id)
         {
-            var objeto = await _objetoRepository.ObtenerPorIdAsync(id);
+            var objeto = await _objetoServicio.ObtenerPorIdAsync(id);
             if (objeto == null)
                 return NotFound();
 
@@ -131,7 +127,7 @@ namespace SASI.Controllers
                 modelo.ObjetosPadre = await ObtenerObjetosPadreSelectListAsync(modelo.IdSistema);
                 return PartialView("_CrearObjetoPartial", modelo);
             }
-                
+
             var objeto = new Objeto
             {
                 IdObjeto = modelo.IdObjeto,
@@ -146,27 +142,21 @@ namespace SASI.Controllers
                 Activo = true
             };
 
-            await _objetoRepository.ActualizarAsync(objeto);
+            await _objetoServicio.ActualizarAsync(objeto);
             return Json(new { success = true });
         }
 
         [HttpPost]
         public async Task<IActionResult> CambiarEstado([FromBody] EliminarObjetoRequest request)
         {
-            var objeto = await _objetoRepository.ObtenerPorIdAsync(request.Id);
-            if (objeto == null)
-                return Json(new { success = false });
-
-            objeto.Activo = !objeto.Activo;
-            await _objetoRepository.ActualizarAsync(objeto);
-
-            return Json(new { success = true, estado = objeto.Activo });
+            var resultado = await _objetoServicio.CambiarEstadoAsync(request.Id);
+            return Json(new { success = resultado.Exito, estado = resultado.Estado });
         }
 
-        public IActionResult ObjetosPorSistema(int idSistema)
+        public async Task<IActionResult> ObjetosPorSistema(int idSistema)
         {
-            var sistema = _sistemaRepository.ObtenerPorId(idSistema);
-            var objetos = _objetoRepository.ObtenerPorSistemaAsync(idSistema);
+            var sistema = await _sistemaServicio.ObtenerPorIdAsync(idSistema);
+            var objetos = await _objetoServicio.ObtenerPorSistemaAsync(idSistema);
 
             ViewBag.Sistema = sistema;
             return View("Objetos", objetos);
@@ -174,7 +164,7 @@ namespace SASI.Controllers
 
         private async Task<List<SelectListItem>> ObtenerObjetosPadreSelectListAsync(int idSistema, int? idPadreSeleccionado = null)
         {
-            var padres = await _objetoRepository.ListarObjetosPadrePorSistemaAsync(idSistema);
+            var padres = await _objetoServicio.ListarObjetosPadrePorSistemaAsync(idSistema);
             return padres.Select(p => new SelectListItem
             {
                 Value = p.IdObjeto.ToString(),

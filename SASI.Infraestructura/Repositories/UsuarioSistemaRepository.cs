@@ -166,39 +166,56 @@ namespace SASI.Infraestructura.Repositories
 
         public async Task<List<UsuarioSistemaRolDto>> ObtenerSistemasYRolesDelUsuarioAsync(Guid userId)
         {
-            var query = from us in _context.UsuarioSistemas
-                        join sistema in _context.Sistemas on us.SistemaId equals sistema.IdSistema
-                        join rol in _context.Roles on us.RolId equals rol.IdRol
-                        where us.UsuarioId == userId
-                        select new UsuarioSistemaRolDto
-                        {
-                            SistemaId = sistema.IdSistema,
-                            SistemaNombre = sistema.Nombre,
-                            SistemaActivo = sistema.Activo,
-                            RolId = rol.IdRol,
-                            RolNombre = rol.Nombre,
-                            RolActivo = rol.Activo,
-                            UsuarioSistemaRolActivo = us.Activo,
-                            EsPrincipal = us.EsPrincipal,
-                            Objetos = (from ro in _context.RolObjetos
-                                       join obj in _context.Objetos on ro.IdObjeto equals obj.IdObjeto
-                                       where ro.IdRol == rol.IdRol && ro.Activo && obj.Activo
-                                       orderby obj.Orden
-                                       select new ObjetoDto
-                                       {
-                                           IdObjeto = obj.IdObjeto,
-                                           Nombre = obj.Nombre,
-                                           Tipo = obj.Tipo,
-                                           Url = obj.Url ?? "",
-                                           Titulo = obj.Titulo ?? "",
-                                           Icono = obj.Icono ?? string.Empty,
-                                           Activo = obj.Activo,
-                                           Orden = obj.Orden,
-                                           IdPadre = obj.IdPadre
-                                       }).ToList()
-                        };
+            // 1. Asignaciones del usuario (sistema + rol) en una sola consulta
+            var asignaciones = await (
+                    from us in _context.UsuarioSistemas
+                    join sistema in _context.Sistemas on us.SistemaId equals sistema.IdSistema
+                    join rol in _context.Roles on us.RolId equals rol.IdRol
+                    where us.UsuarioId == userId
+                    select new { us, sistema, rol })
+                .ToListAsync();
 
-            return await query.ToListAsync();
+            if (!asignaciones.Any())
+                return new List<UsuarioSistemaRolDto>();
+
+            var rolIds = asignaciones.Select(a => a.rol.IdRol).Distinct().ToList();
+
+            // 2. Objetos de todos los roles en una sola consulta (evita N+1 / subconsultas por rol)
+            var objetosPorRol = await (
+                    from ro in _context.RolObjetos
+                    join obj in _context.Objetos on ro.IdObjeto equals obj.IdObjeto
+                    where rolIds.Contains(ro.IdRol) && ro.Activo && obj.Activo
+                    orderby obj.Orden
+                    select new { ro.IdRol, Objeto = obj })
+                .ToListAsync();
+
+            // 3. Componer el resultado en memoria
+            return asignaciones.Select(a => new UsuarioSistemaRolDto
+            {
+                SistemaId = a.sistema.IdSistema,
+                SistemaNombre = a.sistema.Nombre,
+                SistemaActivo = a.sistema.Activo,
+                RolId = a.rol.IdRol,
+                RolNombre = a.rol.Nombre,
+                RolActivo = a.rol.Activo,
+                UsuarioSistemaRolActivo = a.us.Activo,
+                EsPrincipal = a.us.EsPrincipal,
+                Objetos = objetosPorRol
+                    .Where(o => o.IdRol == a.rol.IdRol)
+                    .Select(o => new ObjetoDto
+                    {
+                        IdObjeto = o.Objeto.IdObjeto,
+                        Nombre = o.Objeto.Nombre,
+                        Tipo = o.Objeto.Tipo,
+                        Url = o.Objeto.Url ?? "",
+                        Titulo = o.Objeto.Titulo ?? "",
+                        Icono = o.Objeto.Icono ?? string.Empty,
+                        Activo = o.Objeto.Activo,
+                        Orden = o.Objeto.Orden,
+                        IdPadre = o.Objeto.IdPadre
+                    })
+                    .ToList()
+            }).ToList();
         }
 
         public async Task<bool> UsuarioTieneRolActivoEnSistemaAsync(Guid usuarioId, int sistemaId)

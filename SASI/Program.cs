@@ -6,13 +6,16 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using SASI.Aplicacion.Servicios;
 using SASI.Authorization;
 using SASI.Configuration;
 using SASI.Dominio.Repositories;
 using SASI.Filters;
 using SASI.Infraestructura.Identity;
 using SASI.Infraestructura.Repositories;
+using SASI.Logging;
 using SASI.Middleware;
+using SASI.Servicios;
 using Serilog;
 using SistemaConvocatorias.Infraestructura.Datos;
 using System.Text;
@@ -22,23 +25,25 @@ var builder = WebApplication.CreateBuilder(args);
 // Configurar Serilog antes de construir la app
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
+    .WriteTo.Console()
     .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .Destructure.With<PiiDestructuringPolicy>()
     .CreateLogger();
 
 // Nombre de la política
 var CorsPolicyName = "AllowLocalDev";
+
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://127.0.0.1:8001", "http://localhost:8001", "http://127.0.0.1:8002", "http://localhost:8002", "http://localhost:4200", "https://localhost:44320", "https://localhost:3000" };
 
 // 1) Registrar CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(name: CorsPolicyName, policy =>
     {
-        // En desarrollo: permitir sólo el origen de tu frontend
-        policy.WithOrigins("http://127.0.0.1:8001", "http://localhost:8001", "http://127.0.0.1:8002", "http://localhost:8002", "http://localhost:4200", "https://localhost:44320", "https://localhost:3000")
+        policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod()
-              // .AllowCredentials() // habilitar solo si usas cookies/autenticación por cookie
-              ;
+              .AllowAnyMethod();
     });
 });
 
@@ -80,6 +85,16 @@ builder.Services.AddTransient<IRolObjetoRepository, RolObjetoRepository>();
 builder.Services.AddTransient<IUsuarioSistemaRepository, UsuarioSistemaRepository>();
 builder.Services.AddTransient<ICorrelativoRepository, CorrelativoRepository>();
 builder.Services.AddTransient<IOficinaRepository, OficinaRepository>();
+
+builder.Services.AddScoped<ISistemaServicio, SistemaServicio>();
+builder.Services.AddScoped<IRolServicio, RolServicio>();
+builder.Services.AddScoped<IOficinaServicio, OficinaServicio>();
+builder.Services.AddScoped<IObjetoServicio, ObjetoServicio>();
+builder.Services.AddScoped<IUsuarioSistemaServicio, UsuarioSistemaServicio>();
+
+builder.Services.AddScoped<CuentaServicio>();
+builder.Services.AddScoped<AutenticacionServicio>();
+builder.Services.AddScoped<GestionUsuariosServicio>();
 
 /*builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(@"C:\claveproteccion"))
@@ -190,6 +205,22 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.SameSite = SameSiteMode.Strict;
 });
 
+var cacheProvider = builder.Configuration["Cache:Provider"] ?? "Memory";
+
+if (cacheProvider.Equals("Redis", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = builder.Configuration["Cache:Redis:Configuration"]
+            ?? builder.Configuration.GetConnectionString("Redis");
+        options.InstanceName = "SASI";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
@@ -200,7 +231,11 @@ builder.Services.AddSession(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddSwaggerGen();
+}
 
 builder.Services.Configure<ConfiguracionSistemaSASI>(
     builder.Configuration.GetSection("SistemaSASI"));

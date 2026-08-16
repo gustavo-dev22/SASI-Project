@@ -32,6 +32,7 @@ namespace SistemaConvocatorias.Infraestructura.Datos
         public DbSet<RolObjeto> RolObjetos { get; set; }
         public DbSet<Correlativo> Correlativos { get; set; }
         public DbSet<Oficina> Oficina { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -76,6 +77,12 @@ namespace SistemaConvocatorias.Infraestructura.Datos
 
             modelBuilder.Entity<Oficina>()
                 .HasKey(c => c.IdOficina);
+
+            modelBuilder.Entity<RefreshToken>()
+                .HasKey(rt => rt.Id);
+
+            modelBuilder.Entity<RefreshToken>().HasIndex(rt => rt.UsuarioId);
+            modelBuilder.Entity<RefreshToken>().HasIndex(rt => rt.TokenHash).IsUnique();
 
             modelBuilder.Entity<Rol>()
                 .HasOne(r => r.Sistema)

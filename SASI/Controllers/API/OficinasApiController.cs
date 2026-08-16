@@ -2,10 +2,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using SASI.Dominio.Repositories;
+using SASI.Aplicacion.Servicios;
 using SASI.Infraestructura.Identity;
-using SASI.Infraestructura.Repositories;
 using SASI.Models.Requests;
 
 namespace SASI.Controllers.API
@@ -15,14 +13,12 @@ namespace SASI.Controllers.API
     [Route("api/oficinas")]
     public class OficinasApiController : Controller
     {
-        private readonly IOficinaRepository _oficinaRepository;
-        private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;
+        private readonly IOficinaServicio _oficinaServicio;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public OficinasApiController(IOficinaRepository oficinaRepository, IUsuarioSistemaRepository usuarioSistemaRepository, UserManager<ApplicationUser> userManager)
+        public OficinasApiController(IOficinaServicio oficinaServicio, UserManager<ApplicationUser> userManager)
         {
-            _oficinaRepository = oficinaRepository;
-            _usuarioSistemaRepository = usuarioSistemaRepository;
+            _oficinaServicio = oficinaServicio;
             _userManager = userManager;
         }
 
@@ -31,7 +27,7 @@ namespace SASI.Controllers.API
         {
             try
             {
-                var oficinas = await _oficinaRepository.ListarActivasAsync();
+                var oficinas = await _oficinaServicio.ListarActivasAsync();
 
                 return Ok(new
                 {
@@ -62,13 +58,13 @@ namespace SASI.Controllers.API
         {
             try
             {
-                var oficina = await _oficinaRepository.ObtenerPorId(id);
+                var oficina = await _oficinaServicio.ObtenerPorIdAsync(id);
                 if (oficina == null)
                 {
                     return NotFound(new { exito = false, mensaje = "Oficina no encontrada." });
                 }
 
-                var usuarios = await _oficinaRepository.ObtenerUsuariosPorOficinaAsync(id);
+                var usuarios = await _oficinaServicio.ObtenerUsuariosPorOficinaAsync(id);
 
                 if (usuarios == null || !usuarios.Any())
                 {
@@ -119,8 +115,8 @@ namespace SASI.Controllers.API
                     });
                 }
 
-                // 🔹 Buscar oficina con tu repositorio de oficinas
-                var oficina = await _oficinaRepository.ObtenerPorId(oficinaId);
+                // 🔹 Buscar oficina
+                var oficina = await _oficinaServicio.ObtenerPorIdAsync(oficinaId);
 
                 if (oficina == null)
                 {
@@ -137,7 +133,7 @@ namespace SASI.Controllers.API
                     Usuario = new
                     {
                         UsuarioId = usuario.Id,
-                        NombreCompleto = usuario.NombreCompleto, // 👈 asegúrate que tu modelo ApplicationUser tenga esta propiedad
+                        NombreCompleto = usuario.NombreCompleto,
                         UserName = usuario.UserName
                     },
                     Oficina = new
@@ -175,7 +171,7 @@ namespace SASI.Controllers.API
             foreach (var r in remitentes)
             {
                 var usuario = await _userManager.FindByIdAsync(r.UsuarioId.ToString());
-                var oficina = await _oficinaRepository.ObtenerPorId(r.OficinaId);
+                var oficina = await _oficinaServicio.ObtenerPorIdAsync(r.OficinaId);
 
                 if (usuario != null && oficina != null)
                 {
@@ -212,8 +208,7 @@ namespace SASI.Controllers.API
                 if (ids == null || !ids.Any())
                     return BadRequest(new { exito = false, mensaje = "Lista de IDs vacía." });
 
-                // Asumimos que tu repositorio tiene un método para filtrar por lista o usamos el ListarActivas y filtramos
-                var todas = await _oficinaRepository.ListarActivasAsync();
+                var todas = await _oficinaServicio.ListarActivasAsync();
                 var filtradas = todas.Where(o => ids.Contains(o.IdOficina)).Select(o => new {
                     o.IdOficina,
                     o.Nombre,

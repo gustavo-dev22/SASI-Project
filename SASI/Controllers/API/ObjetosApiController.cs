@@ -1,8 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SASI.Dominio.Repositories;
-using SASI.Infraestructura.Repositories;
+using SASI.Aplicacion.Servicios;
 
 namespace SASI.Controllers.API
 {
@@ -11,13 +10,13 @@ namespace SASI.Controllers.API
     [Route("api/objetos")]
     public class ObjetosApiController : Controller
     {
-        private readonly IObjetoRepository _objetoRepository;
-        private readonly IRolRepository _rolRepository;
+        private readonly IObjetoServicio _objetoServicio;
+        private readonly IRolServicio _rolServicio;
 
-        public ObjetosApiController(IObjetoRepository objetoRepository, IRolRepository rolRepository)
+        public ObjetosApiController(IObjetoServicio objetoServicio, IRolServicio rolServicio)
         {
-            _objetoRepository = objetoRepository;
-            _rolRepository = rolRepository;
+            _objetoServicio = objetoServicio;
+            _rolServicio = rolServicio;
         }
 
         [HttpGet("PorSistema/{idSistema}")]
@@ -25,7 +24,7 @@ namespace SASI.Controllers.API
         {
             try
             {
-                var objetos = await _objetoRepository.ObtenerPorSistemaAsync(idSistema);
+                var objetos = await _objetoServicio.ObtenerPorSistemaAsync(idSistema);
 
                 if (objetos == null || !objetos.Any())
                 {
@@ -69,7 +68,7 @@ namespace SASI.Controllers.API
         {
             try
             {
-                var roles = await _rolRepository.ObtenerPorSistemaId(idSistema);
+                var roles = await _rolServicio.ObtenerPorSistemaIdAsync(idSistema);
 
                 if (roles == null || !roles.Any())
                 {

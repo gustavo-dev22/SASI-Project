@@ -2,15 +2,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
-using SASI.Configuration;
-using SASI.Dominio.Repositories;
 using SASI.Infraestructura.Identity;
-using SASI.Infraestructura.Repositories;
 using SASI.Models;
-using SistemaConvocatorias.Infraestructura.Datos;
+using SASI.Servicios;
 
 namespace SASI.Controllers
 {
@@ -18,24 +13,19 @@ namespace SASI.Controllers
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;
-        private readonly int _sistemaId;
-        private readonly int _diasVencimientoPassword;
+        private readonly CuentaServicio _cuentaServicio;
         private readonly IAntiforgery Antiforgery;
-        private readonly SasiDbContext _sasiDbContext;
 
-        public CuentaController(SignInManager<ApplicationUser> signInManager, 
-                                UserManager<ApplicationUser> userManager, 
-                                IUsuarioSistemaRepository usuarioSistemaRepository, IOptions<ConfiguracionSistemaSASI> config, 
-                                IAntiforgery antiforgery, SasiDbContext sasiDbContext)
+        public CuentaController(
+            SignInManager<ApplicationUser> signInManager,
+            UserManager<ApplicationUser> userManager,
+            CuentaServicio cuentaServicio,
+            IAntiforgery antiforgery)
         {
             _signInManager = signInManager;
             _userManager = userManager;
-            _usuarioSistemaRepository = usuarioSistemaRepository;
-            _sistemaId = config.Value.Id;
-            _diasVencimientoPassword = config.Value.DiasVencimientoPassword;
+            _cuentaServicio = cuentaServicio;
             Antiforgery = antiforgery;
-            _sasiDbContext = sasiDbContext;
         }
 
         [HttpGet]
@@ -57,108 +47,50 @@ namespace SASI.Controllers
             if (!ModelState.IsValid)
                 return Json(new { success = false, mensaje = "Debe ingresar usuario y contraseña." });
 
-            var user = await _userManager.FindByEmailAsync(email);
+            var resultado = await _cuentaServicio.LoginAsync(email, password);
 
-            if (user == null || !user.Activo)
+            if (!resultado.Success)
             {
-                return Json(new { success = false, tipo = "credencialesInvalidas" });
+                var respuesta = resultado.IntentosRestantes.HasValue
+                    ? (object)new { success = false, tipo = "credencialesInvalidas", intentosRestantes = resultado.IntentosRestantes }
+                    : new { success = false, tipo = "credencialesInvalidas" };
+                return Json(respuesta);
             }
 
-            var result = await _signInManager.PasswordSignInAsync(user, password, isPersistent: false, lockoutOnFailure: true);
-
-            if (!result.Succeeded)
+            if (resultado.OficinaId.HasValue && !string.IsNullOrEmpty(resultado.OficinaNombre))
             {
-                var intentosRestantes = Math.Max(0, _userManager.Options.Lockout.MaxFailedAccessAttempts - user.AccessFailedCount);
-                return Json(new { success = false, tipo = "credencialesInvalidas", intentosRestantes });
+                HttpContext.Session.SetInt32("OficinaId", resultado.OficinaId.Value);
+                HttpContext.Session.SetString("OficinaNombre", resultado.OficinaNombre);
             }
 
-            var tieneAccesoSASI = await _usuarioSistemaRepository.UsuarioTieneRolActivoEnSistemaAsync(user.Id, _sistemaId);
-            if (!tieneAccesoSASI)
-            {
-                await _signInManager.SignOutAsync();
-                return Json(new { success = false, tipo = "credencialesInvalidas" });
-            }
-
-            user.IntentosFallidosConsecutivos = 0;
-            await _userManager.UpdateAsync(user);
-
-            if (user.IdOficina.HasValue)
-            {
-                var oficina = await _sasiDbContext.Oficina
-                    .FirstOrDefaultAsync(o => o.IdOficina == user.IdOficina.Value);
-
-                if (oficina != null)
-                {
-                    HttpContext.Session.SetInt32("OficinaId", oficina.IdOficina);
-                    HttpContext.Session.SetString("OficinaNombre", oficina.Nombre);
-                }
-            }
-
-            // Validar si debe cambiar contraseña (primer ingreso)
-            if (user.DebeCambiarPassword)
+            if (resultado.RequiereCambioPassword)
             {
                 HttpContext.Session.SetString("RequiereCambioPassword", "true");
-                HttpContext.Session.SetString("CambioPasswordEmail", user.Email ?? "");
+                HttpContext.Session.SetString("CambioPasswordEmail", email);
                 return Json(new { success = false, tipo = "cambioPasswordObligatorio" });
             }
 
-            // Validar vencimiento de contraseña
-            if (user.FechaUltimoCambioPassword.HasValue)
+            if (resultado.PasswordVencida)
             {
-                var diasDesdeCambio = (DateTime.UtcNow - user.FechaUltimoCambioPassword.Value).TotalDays;
-                var diasRestantes = _diasVencimientoPassword - (int)diasDesdeCambio;
-                if (diasDesdeCambio >= _diasVencimientoPassword)
-                {
-                    HttpContext.Session.SetString("PasswordVencida", "true");
-                    return Json(new { success = false, tipo = "cambioPasswordObligatorio" });
-                }
-                else
-                {
-                    HttpContext.Session.SetInt32("DiasRestantesPassword", diasRestantes);
-                }
+                HttpContext.Session.SetString("PasswordVencida", "true");
+                return Json(new { success = false, tipo = "cambioPasswordObligatorio" });
             }
 
-            var rolPredeterminado = await _usuarioSistemaRepository.ObtenerRolPredeterminado(user.Id, _sistemaId);
-            if (rolPredeterminado != null)
-                HttpContext.Session.SetInt32("RolSeleccionado", rolPredeterminado.Value);
-
-            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-                return Redirect(returnUrl);
-
-            var sistemasYRoles = await _usuarioSistemaRepository.ObtenerSistemasYRolesDelUsuarioAsync(user.Id);
-
-            if (!sistemasYRoles.Any(sr => sr.SistemaId == _sistemaId && sr.SistemaActivo && sr.UsuarioSistemaRolActivo))
+            if (resultado.DiasRestantesPassword.HasValue)
             {
-                await _signInManager.SignOutAsync();
-                return Json(new { success = false, tipo = "credencialesInvalidas" });
+                HttpContext.Session.SetInt32("DiasRestantesPassword", resultado.DiasRestantesPassword.Value);
+            }
+
+            if (resultado.RolSeleccionado.HasValue)
+            {
+                HttpContext.Session.SetInt32("RolSeleccionado", resultado.RolSeleccionado.Value);
             }
 
             HttpContext.Session.Remove("MenuUsuario");
+            HttpContext.Session.SetString("MenuUsuario", JsonConvert.SerializeObject(resultado.Menu ?? new List<MenuItemViewModel>()));
 
-            if (rolPredeterminado != null)
-            {
-                var rolActivo = sistemasYRoles
-                    .FirstOrDefault(sr => sr.RolId == rolPredeterminado.Value && sr.SistemaId == _sistemaId && sr.UsuarioSistemaRolActivo);
-
-                if (rolActivo != null)
-                {
-                    var objetosDelRolPrincipal = rolActivo.Objetos
-                        .Where(o => o.Activo)
-                        .Select(o => new MenuItemViewModel
-                        {
-                            Id = o.IdObjeto,
-                            Nombre = o.Nombre,
-                            Url = o.Url,
-                            Icono = o.Icono ?? string.Empty,
-                            Tipo = o.Tipo,
-                            IdPadre = o.IdPadre,
-                            Orden = o.Orden
-                        })
-                        .ToList();
-
-                    HttpContext.Session.SetString("MenuUsuario", JsonConvert.SerializeObject(objetosDelRolPrincipal));
-                }
-            }
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                return Redirect(returnUrl);
 
             return Json(new { success = true, redirectUrl = Url.Action("Index", "Home") });
         }
@@ -176,7 +108,6 @@ namespace SASI.Controllers
         }
 
         [HttpPost]
-        //[ValidateAntiForgeryToken]
         public IActionResult RenovarSesion()
         {
             if (User?.Identity?.IsAuthenticated ?? false)
@@ -205,36 +136,9 @@ namespace SASI.Controllers
                 return RedirectToAction("Login", "Cuenta");
             }
 
-            var sistemasYRoles = await _usuarioSistemaRepository.ObtenerSistemasYRolesDelUsuarioAsync(user.Id);
+            var menu = await _cuentaServicio.SeleccionarRolAsync(user.Id, rolId);
+            HttpContext.Session.SetString("MenuUsuario", JsonConvert.SerializeObject(menu));
 
-            if (sistemasYRoles.Any(sr => sr.SistemaId == _sistemaId && sr.SistemaActivo))
-            {
-                var nuevoRol = sistemasYRoles
-                    .FirstOrDefault(sr => sr.RolId == rolId && sr.SistemaId == _sistemaId && sr.UsuarioSistemaRolActivo);
-
-                if (nuevoRol != null)
-                {
-                    var listaObjetos = nuevoRol.Objetos
-                                        .Where(o => o.Activo)
-                                        .GroupBy(o => o.IdObjeto)
-                                        .Select(g => g.First())
-                                        .Select(o => new MenuItemViewModel
-                                        {
-                                            Id = o.IdObjeto,
-                                            Nombre = o.Nombre,
-                                            Url = o.Url,
-                                            Icono = o.Icono ?? string.Empty,
-                                            Tipo = o.Tipo,
-                                            IdPadre = o.IdPadre,
-                                            Orden = o.Orden
-                                        })
-                                        .ToList();
-
-                    HttpContext.Session.SetString("MenuUsuario", JsonConvert.SerializeObject(listaObjetos));
-                }
-            }
-
-            // Redirige a donde estabas, o al home
             return RedirectToAction("Index", "Home");
         }
 
@@ -261,31 +165,17 @@ namespace SASI.Controllers
                 return View();
             }
 
-            var user = await _userManager.FindByEmailAsync(email);
-            if (user == null)
+            var resultado = await _cuentaServicio.CambiarPasswordObligatorioAsync(email, nuevaPassword);
+
+            if (resultado.Exito)
             {
-                return RedirectToAction("Login");
-            }
-
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var result = await _userManager.ResetPasswordAsync(user, token, nuevaPassword);
-
-            if (result.Succeeded)
-            {
-                TimeZoneInfo peruZone = TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time");
-                DateTime horaPeru = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, peruZone);
-
-                user.FechaUltimoCambioPassword = horaPeru;
-                user.DebeCambiarPassword = false;
-                await _userManager.UpdateAsync(user);
-
                 HttpContext.Session.Remove("PasswordVencida");
 
                 await _signInManager.SignOutAsync();
                 return RedirectToAction("Login", "Cuenta");
             }
 
-            TempData["ErrorCambioPassword"] = "Error al cambiar la contraseña.";
+            TempData["ErrorCambioPassword"] = resultado.Error ?? "Error al cambiar la contraseña.";
             TempData["MostrarModalPassword"] = true;
             return View();
         }

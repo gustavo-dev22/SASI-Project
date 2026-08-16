@@ -55,6 +55,13 @@ namespace SASI.Infraestructura.Repositories
             .ToListAsync();
         }
 
+        public async Task<List<Objeto>> ObtenerPorIdsAsync(List<int> ids)
+        {
+            return await _context.Objetos
+                .Where(o => ids.Contains(o.IdObjeto))
+                .ToListAsync();
+        }
+
         public async Task<Objeto?> ObtenerPorIdAsync(int id)
         {
             return await _context.Objetos.FindAsync(id);

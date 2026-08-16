@@ -1,9 +1,9 @@
-﻿namespace SASI.Models
+namespace SASI.Models
 {
     public class UsuarioViewModel
     {
-        public string NombreCompleto { get; set; }
-        public string Email { get; set; }
-        public string NombreUsuario { get; set; }
+        public string NombreCompleto { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string NombreUsuario { get; set; } = string.Empty;
     }
 }

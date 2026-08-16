@@ -70,8 +70,6 @@ namespace SASI.Controllers
         [HttpPost]
         public async Task<IActionResult> Crear(ObjetoViewModel viewModel)
         {
-            ModelState.Clear();
-
             if (!ModelState.IsValid)
             {
                 // Si hay error, vuelve a cargar la lista de objetos padre
@@ -128,8 +126,6 @@ namespace SASI.Controllers
         [HttpPost]
         public async Task<IActionResult> Editar(ObjetoViewModel modelo)
         {
-            ModelState.Clear();
-
             if (!ModelState.IsValid)
             {
                 modelo.ObjetosPadre = await ObtenerObjetosPadreSelectListAsync(modelo.IdSistema);

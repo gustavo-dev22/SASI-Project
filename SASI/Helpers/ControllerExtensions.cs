@@ -12,7 +12,8 @@ namespace SASI.Helpers
             controller.ViewData.Model = model;
 
             using var writer = new StringWriter();
-            var viewEngine = controller.HttpContext.RequestServices.GetService(typeof(ICompositeViewEngine)) as ICompositeViewEngine;
+            var viewEngine = controller.HttpContext.RequestServices.GetService(typeof(ICompositeViewEngine)) as ICompositeViewEngine
+                ?? throw new InvalidOperationException("No se pudo resolver ICompositeViewEngine.");
             var viewResult = viewEngine.FindView(controller.ControllerContext, viewName, !partial);
 
             if (!viewResult.Success)

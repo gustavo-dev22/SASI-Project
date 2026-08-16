@@ -1,11 +1,11 @@
-﻿namespace SASI.Dominio.DTO
+namespace SASI.Dominio.DTO
 {
     public class RolDto
     {
         public int IdRol { get; set; }
-        public string NombreRol { get; set; }
+        public string NombreRol { get; set; } = string.Empty;
         public bool Activo { get; set; }
         public bool EsPrincipal { get; set; }
-        public List<ObjetoDto> Objetos { get; set; }
+        public List<ObjetoDto> Objetos { get; set; } = default!;
     }
 }

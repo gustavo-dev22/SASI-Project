@@ -11,7 +11,6 @@ using SASI.Infraestructura.Identity;
 using SASI.Infraestructura.Repositories;
 using SASI.Models;
 using SistemaConvocatorias.Infraestructura.Datos;
-using System.Web.Helpers;
 
 namespace SASI.Controllers
 {
@@ -40,7 +39,7 @@ namespace SASI.Controllers
         }
 
         [HttpGet]
-        public IActionResult Login(string returnUrl = null)
+        public IActionResult Login(string? returnUrl = null)
         {
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
@@ -53,7 +52,7 @@ namespace SASI.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(string email, string password, string returnUrl = null)
+        public async Task<IActionResult> Login(string email, string password, string? returnUrl = null)
         {
             if (!ModelState.IsValid)
                 return Json(new { success = false, mensaje = "Debe ingresar usuario y contraseña." });
@@ -99,7 +98,7 @@ namespace SASI.Controllers
             if (user.DebeCambiarPassword)
             {
                 HttpContext.Session.SetString("RequiereCambioPassword", "true");
-                HttpContext.Session.SetString("CambioPasswordEmail", user.Email);
+                HttpContext.Session.SetString("CambioPasswordEmail", user.Email ?? "");
                 return Json(new { success = false, tipo = "cambioPasswordObligatorio" });
             }
 

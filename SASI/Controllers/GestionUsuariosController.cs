@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +14,10 @@ namespace SASI.Controllers
 {
     public class UsuarioDto
     {
-        public string NombreCompleto { get; set; }
-        public string Usuario { get; set; } // esto será el UserName
-        public string Email { get; set; }
-        public string NombreOficina { get; set; }
+        public string NombreCompleto { get; set; } = string.Empty;
+        public string Usuario { get; set; } = string.Empty; // esto será el UserName
+        public string Email { get; set; } = string.Empty;
+        public string NombreOficina { get; set; } = string.Empty;
     }
 
     [Authorize(Policy = "AccesoModulo")]
@@ -259,7 +259,7 @@ namespace SASI.Controllers
 
             // Opcional: precargar usuarios existentes para validar duplicados rápido
             var existentes = _userManager.Users
-                .Select(u => new { u.UserName, u.Email })
+                .Select(u => new { UserName = u.UserName ?? "", Email = u.Email ?? "" })
                 .ToList();
 
             foreach (var u in usuarios)
@@ -361,7 +361,7 @@ namespace SASI.Controllers
 
             // Busca coincidencias en AspNetUsers por UserName
             var existentes = await _userManager.Users
-                .Where(u => usuarios.Contains(u.UserName))
+                .Where(u => usuarios.Contains(u.UserName ?? ""))
                 .Select(u => u.UserName)
                 .ToListAsync();
 

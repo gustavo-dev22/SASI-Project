@@ -13,7 +13,7 @@ namespace SASI.Dominio.Repositories
         Task CrearAsync(Sistema sistema);
         Task<(bool Exito, string Mensaje)> EliminarAsync(int id);
         Task Actualizar(Sistema sistema);
-        Task<Sistema> ObtenerPorId(int id);
+        Task<Sistema?> ObtenerPorId(int id);
         Task<(bool Exito, string Mensaje)> ActualizarEstadoAsync(int id);
     }
 }

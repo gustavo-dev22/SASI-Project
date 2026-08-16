@@ -1,4 +1,4 @@
-﻿using SASI.Dominio.Modelo.Commons;
+using SASI.Dominio.Modelo.Commons;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -11,11 +11,11 @@ namespace SASI.Dominio.Modelo
     public class Rol : AuditoriaBase
     {
         public int IdRol { get; set; }
-        public string Nombre { get; set; } // Ej: "Administrador", "Lector"
+        public string Nombre { get; set; } = string.Empty; // Ej: "Administrador", "Lector"
         public int IdSistema { get; set; } // Relación con el sistema al que pertenece el rol
         public bool Activo { get; set; } = true;
 
         [ForeignKey("IdSistema")]
-        public Sistema Sistema { get; set; }
+        public Sistema Sistema { get; set; } = default!;
     }
 }

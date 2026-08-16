@@ -1,4 +1,4 @@
-﻿using SASI.Dominio.Modelo.Commons;
+using SASI.Dominio.Modelo.Commons;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -11,8 +11,8 @@ namespace SASI.Dominio.Modelo
     public class Objeto : AuditoriaBase
     {
         public int IdObjeto { get; set; }
-        public string Nombre { get; set; }
-        public string Tipo { get; set; } // "Menu", "Submenu", "Item"
+        public string Nombre { get; set; } = string.Empty;
+        public string Tipo { get; set; } = string.Empty; // "Menu", "Submenu", "Item"
 
         [NotMapped]
         public TipoObjeto TipoObjeto
@@ -32,6 +32,6 @@ namespace SASI.Dominio.Modelo
         public Objeto? ObjetoPadre { get; set; }
         public IEnumerable<Objeto>? Hijos { get; set; }
 
-        public Sistema Sistema { get; set; }
+        public Sistema Sistema { get; set; } = default!;
     }
 }

@@ -1,10 +1,10 @@
-﻿namespace SASI.Dominio.DTO
+namespace SASI.Dominio.DTO
 {
     public class SistemaDto
     {
         public int Id { get; set; }
-        public string Nombre { get; set; }
+        public string Nombre { get; set; } = string.Empty;
         public bool Activo { get; set; }
-        public List<RolDto> Roles { get; set; }
+        public List<RolDto> Roles { get; set; } = default!;
     }
 }

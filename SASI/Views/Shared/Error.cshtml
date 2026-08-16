@@ -3,23 +3,27 @@
     ViewData["Title"] = "Error";
 }
 
-<h1 class="text-danger">Error.</h1>
-<h2 class="text-danger">An error occurred while processing your request.</h2>
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="card shadow-lg border-0 p-4 text-center" style="width: 100%; max-width: 460px; border-radius: 1rem;">
+        <div class="mb-3">
+            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10" style="width: 90px; height: 90px;">
+                <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem;"></i>
+            </span>
+        </div>
 
-@if (Model.ShowRequestId)
-{
-    <p>
-        <strong>Request ID:</strong> <code>@Model.RequestId</code>
-    </p>
-}
+        <h4 class="fw-bold text-danger mb-2">Ocurrió un error</h4>
+        <p class="text-muted mb-1">Lo sentimos, se produjo un error inesperado al procesar su solicitud.</p>
+        <p class="text-muted mb-4">Si el problema persiste, contacte al administrador del sistema.</p>
 
-<h3>Development Mode</h3>
-<p>
-    Swapping to <strong>Development</strong> environment will display more detailed information about the error that occurred.
-</p>
-<p>
-    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
-    It can result in displaying sensitive information from exceptions to end users.
-    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong> environment variable to <strong>Development</strong>
-    and restarting the app.
-</p>
+        @if (Model.ShowRequestId)
+        {
+            <p class="text-muted small mb-4">
+                ID de referencia: <code>@Model.RequestId</code>
+            </p>
+        }
+
+        <a class="btn btn-primary w-100" asp-controller="Home" asp-action="Index">
+            <i class="bi bi-house-door-fill me-1"></i> Volver al inicio
+        </a>
+    </div>
+</div>

@@ -67,12 +67,12 @@ namespace SASI.Infraestructura.Repositories
             return await _context.Oficina.ToListAsync();
         }
 
-        public async Task<Oficina> ObtenerPorId(int id)
+        public async Task<Oficina?> ObtenerPorId(int id)
         {
             return await _context.Oficina.FirstOrDefaultAsync(s => s.IdOficina == id);
         }
 
-        public async Task<Oficina> ObtenerPorNombre(string nombre)
+        public async Task<Oficina?> ObtenerPorNombre(string nombre)
         {
             var nombreNormalizado = nombre.Trim();
 
@@ -90,7 +90,7 @@ namespace SASI.Infraestructura.Repositories
                 {
                     UsuarioId = u.Id,
                     NombreCompleto = u.NombreCompleto,
-                    UserName = u.UserName
+                    UserName = u.UserName ?? ""
                 })
                 .ToListAsync();
 

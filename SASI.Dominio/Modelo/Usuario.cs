@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,9 +9,9 @@ namespace SASI.Dominio.Modelo
     public class Usuario
     {
         public Guid IdUsuario { get; set; }
-        public string NombreCompleto { get; set; }
-        public string Correo { get; set; }
+        public string NombreCompleto { get; set; } = string.Empty;
+        public string Correo { get; set; } = string.Empty;
 
-        public IEnumerable<UsuarioSistema> SistemasAsignados { get; set; }
+        public IEnumerable<UsuarioSistema> SistemasAsignados { get; set; } = default!;
     }
 }

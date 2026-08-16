@@ -63,7 +63,7 @@
     window.onload = function () {
         var mostrarModal = '@ViewBag.MostrarModalPassword' === 'True';
         if (mostrarModal) {
-            var emailUsuario = '@User.Identity.Name';
+            var emailUsuario = '@User.Identity?.Name';
             document.getElementById("emailCambioPassword").value = emailUsuario;
             var error = '@ViewBag.ErrorCambioPassword';
             if (error) {

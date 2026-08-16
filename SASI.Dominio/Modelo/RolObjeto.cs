@@ -1,4 +1,4 @@
-﻿using SASI.Dominio.Modelo.Commons;
+using SASI.Dominio.Modelo.Commons;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,7 +14,7 @@ namespace SASI.Dominio.Modelo
         public int IdObjeto { get; set; }
         public bool Activo { get; set; } = true;
 
-        public Rol Rol { get; set; }
-        public Objeto Objeto { get; set; }
+        public Rol Rol { get; set; } = default!;
+        public Objeto Objeto { get; set; } = default!;
     }
 }

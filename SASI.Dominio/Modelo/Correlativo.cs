@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +8,7 @@ namespace SASI.Dominio.Modelo
 {
     public class Correlativo
     {
-        public string Entidad { get; set; }
+        public string Entidad { get; set; } = string.Empty;
         public int UltimoNumero { get; set; }
     }
 }

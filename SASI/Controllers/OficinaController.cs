@@ -56,8 +56,6 @@ namespace SASI.Controllers
         [Authorize(Policy = "AccesoModulo")]
         public async Task<IActionResult> Crear([FromBody] OficinaViewModel modelo)
         {
-            ModelState.Clear();
-
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, mensaje = "Datos inválidos" });
 

@@ -87,7 +87,7 @@ namespace SASI.Controllers.API
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(ClaimTypes.Name, user.UserName ?? ""),
                 new Claim(ClaimTypes.Email, user.Email ?? ""),
                 new Claim("nombreCompleto", user.NombreCompleto)
             };
@@ -106,7 +106,7 @@ namespace SASI.Controllers.API
                 }
             }
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? ""));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var horasExpiracion = double.TryParse(_config["Jwt:ExpiresHours"], out var horasConfig)
@@ -114,7 +114,7 @@ namespace SASI.Controllers.API
                 : 1.0;
             var expires = DateTime.UtcNow.AddHours(horasExpiracion);
 
-            Oficina oficina = null;
+            Oficina? oficina = null;
             if (user.IdOficina.HasValue)
             {
                 oficina = await _sasiDbContext.Oficina
@@ -138,7 +138,7 @@ namespace SASI.Controllers.API
             var idsPadreGlobales = sistemasYRoles
                 .SelectMany(sr => sr.Objetos)
                 .Where(o => o.Tipo == "Submenu" && o.IdPadre != null)
-                .Select(o => o.IdPadre.Value)
+                .Select(o => o.IdPadre!.Value)
                 .Distinct()
                 .ToList();
 
@@ -149,8 +149,8 @@ namespace SASI.Controllers.API
                     IdObjeto = o.IdObjeto,
                     Nombre = o.Nombre,
                     Tipo = o.Tipo,
-                    Url = o.Url,
-                    Titulo = o.Titulo,
+                    Url = o.Url ?? "",
+                    Titulo = o.Titulo ?? "",
                     Icono = o.Icono ?? string.Empty,
                     Activo = o.Activo,
                     Orden = o.Orden,
@@ -177,10 +177,10 @@ namespace SASI.Controllers.API
                                         .ToList();
 
                                     // 3️⃣ IDs de los menús padre
-                                    var idsPadre = submenus
-                                        .Select(s => s.IdPadre.Value)
-                                        .Distinct()
-                                        .ToList();
+                    var idsPadre = submenus
+                        .Select(s => s.IdPadre!.Value)
+                        .Distinct()
+                        .ToList();
 
                                     // 4️⃣ Menús padre que NO están asignados pero son necesarios
                                     var menusPadre = menusPadreGlobales
@@ -249,7 +249,7 @@ namespace SASI.Controllers.API
 
             var sistemasYRoles = await _usuarioSistemaRepository.ObtenerSistemasYRolesDelUsuarioAsync(user.Id);
 
-            Oficina oficina = null;
+            Oficina? oficina = null;
             if (user.IdOficina.HasValue)
             {
                 oficina = await _sasiDbContext.Oficina
@@ -309,7 +309,7 @@ namespace SASI.Controllers.API
                 {
                     IdUsuario = u.Id,
                     NombreCompleto = u.NombreCompleto,
-                    Email = u.Email
+                    Email = u.Email ?? ""
                 })
                 .FirstOrDefaultAsync();
 
@@ -328,7 +328,7 @@ namespace SASI.Controllers.API
                 {
                     IdUsuario = u.Id,
                     NombreCompleto = u.NombreCompleto,
-                    Email = u.Email
+                    Email = u.Email ?? ""
                 })
                 .ToListAsync();
 

@@ -15,8 +15,8 @@ namespace SASI.Dominio.Repositories
         Task Actualizar(Oficina oficina);
         Task<IEnumerable<Oficina>> ListarActivasAsync();
         Task<(bool Exito, string Mensaje)> ActualizarEstadoAsync(int id);
-        Task<Oficina> ObtenerPorId(int id);
-        Task<Oficina> ObtenerPorNombre(string nombre);
+        Task<Oficina?> ObtenerPorId(int id);
+        Task<Oficina?> ObtenerPorNombre(string nombre);
         Task<List<UsuarioAsignadoDto>> ObtenerUsuariosPorOficinaAsync(int idOficina);
     }
 }

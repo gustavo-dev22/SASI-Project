@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using SASI.Dominio.Modelo;
 using SASI.Dominio.Repositories;
 using SistemaConvocatorias.Infraestructura.Datos;
@@ -7,7 +8,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Web.Mvc;
 
 namespace SASI.Infraestructura.Repositories
 {
@@ -51,7 +51,7 @@ namespace SASI.Infraestructura.Repositories
                     .FirstOrDefault();
         }
 
-        public async Task<Rol> ObtenerPorId(int id)
+        public async Task<Rol?> ObtenerPorId(int id)
         {
             return await _context.Roles.FindAsync(id);
         }

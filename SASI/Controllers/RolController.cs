@@ -59,8 +59,6 @@ namespace SASI.Controllers
         [HttpPost]
         public async Task<IActionResult> Crear(Rol rol)
         {
-            ModelState.Clear();
-
             if (!ModelState.IsValid)
                 return PartialView("_CrearRolPartial", rol);
 
@@ -94,8 +92,6 @@ namespace SASI.Controllers
         [HttpPost]
         public async Task<IActionResult> Editar(Rol rol)
         {
-            ModelState.Clear();
-
             if (!ModelState.IsValid)
                 return PartialView("_CrearRolPartial", rol);
 

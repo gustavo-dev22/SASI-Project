@@ -83,7 +83,7 @@ namespace SASI.Infraestructura.Repositories
             return await _context.Sistemas.Include(s => s.Roles).OrderByDescending(s => s.FechaRegistro).ToListAsync();
         }
 
-        public async Task<Sistema> ObtenerPorId(int id)
+        public async Task<Sistema?> ObtenerPorId(int id)
         {
             return await _context.Sistemas.FirstOrDefaultAsync(s => s.IdSistema == id);
         }

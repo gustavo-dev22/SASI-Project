@@ -22,7 +22,12 @@ namespace SASI.ViewComponents
 
         public async Task<IViewComponentResult> InvokeAsync()
         {
-            var userId = Guid.Parse(_httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!Guid.TryParse(userIdClaim, out var userId))
+            {
+                return View(new List<Rol>());
+            }
 
             var roles = await _usuarioSistemaRepository.ObtenerRolesDelUsuarioEnSistema(userId, _sistemaId);
 

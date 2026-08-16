@@ -72,8 +72,6 @@ namespace SASI.Controllers
         [HttpPost]
         public async Task<IActionResult> Crear([FromBody] Sistema modelo)
         {
-            ModelState.Clear();
-
             if (!ModelState.IsValid)
                 return BadRequest(new { success = false, mensaje = "Datos inválidos" });
 
@@ -158,7 +156,7 @@ namespace SASI.Controllers
             var sistema = await _sistemaRepository.ObtenerPorId(sistemaId);
 
             ViewBag.SistemaId = sistemaId;
-            ViewBag.NombreSistema = sistema.Nombre;
+            ViewBag.NombreSistema = sistema?.Nombre ?? "";
 
             var pagedUsuarios = usuarios.ToPagedList(page, pageSize);
 
@@ -167,7 +165,7 @@ namespace SASI.Controllers
             return Json(new
             {
                 html,
-                nombreSistema = sistema.Nombre
+                nombreSistema = sistema?.Nombre ?? ""
             });
         }
     }

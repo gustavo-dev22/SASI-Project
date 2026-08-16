@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,8 +9,8 @@ namespace SASI.Dominio.Modelo
     public class Oficina
     {
         public int IdOficina { get; set; }
-        public string Nombre { get; set; }
-        public string Sigla { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string Sigla { get; set; } = string.Empty;
         public int? IdOficinaPadre { get; set; }
         public bool Activo { get; set; } = true;
     }

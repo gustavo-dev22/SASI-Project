@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,11 +15,11 @@ namespace SASI.Dominio.Modelo
 
         public int SistemaId { get; set; }
 
-        public Sistema Sistema { get; set; }
+        public Sistema Sistema { get; set; } = default!;
 
         public int RolId { get; set; }
 
-        public Rol Rol { get; set; }
+        public Rol Rol { get; set; } = default!;
 
         public DateTime FechaAsignacion { get; set; }
 

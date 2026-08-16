@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using SASI.Dominio.Modelo;
 using System;
 using System.Collections.Generic;
@@ -10,15 +10,15 @@ namespace SASI.Infraestructura.Identity
 {
     public class ApplicationUser : IdentityUser<Guid>
     {
-        public string NombreCompleto { get; set; }
+        public string NombreCompleto { get; set; } = string.Empty;
 
         // Campo personalizado
         public bool Activo { get; set; } = true; // Por defecto activo
 
         // Campos de auditoría
-        public string AuditUsuarioCreacion { get; set; }
+        public string AuditUsuarioCreacion { get; set; } = string.Empty;
         public DateTime AuditFechaCreacion { get; set; }
-        public string IpCreacion { get; set; }
+        public string IpCreacion { get; set; } = string.Empty;
 
         public string? AuditUsuarioModificacion { get; set; }
         public DateTime? AuditFechaModificacion { get; set; }

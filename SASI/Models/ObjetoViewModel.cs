@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using SASI.Dominio.Modelo;
 
 namespace SASI.Models
@@ -6,9 +6,9 @@ namespace SASI.Models
     public class ObjetoViewModel
     {
         public int IdObjeto { get; set; }
-        public string Nombre { get; set; }
+        public string Nombre { get; set; } = string.Empty;
 
-        public string Tipo { get; set; } // "Menu", "Submenu", "Item"
+        public string Tipo { get; set; } = string.Empty; // "Menu", "Submenu", "Item"
 
         public TipoObjeto TipoObjeto
         {

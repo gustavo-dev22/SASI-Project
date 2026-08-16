@@ -16,6 +16,40 @@
     }
 });
 
+$(function () {
+    const token = document.querySelector('meta[name="RequestVerificationToken"]')?.getAttribute('content');
+
+    if (token) {
+        $.ajaxSetup({
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader('RequestVerificationToken', token);
+            }
+        });
+    }
+});
+
+(function () {
+    const token = document.querySelector('meta[name="RequestVerificationToken"]')?.getAttribute('content');
+    if (!token) return;
+
+    const fetchOriginal = window.fetch;
+    window.fetch = function (url, options) {
+        options = options || {};
+        const method = (options.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+            if (options.headers instanceof Headers) {
+                if (!options.headers.has('RequestVerificationToken')) {
+                    options.headers.append('RequestVerificationToken', token);
+                }
+            } else {
+                options.headers = options.headers || {};
+                options.headers['RequestVerificationToken'] = token;
+            }
+        }
+        return fetchOriginal.call(this, url, options);
+    };
+})();
+
 function mostrarSpinnerYMensaje({ mensajeExito, callbackFinal = null, tiempoSimulado = 3000 }) {
     Swal.fire({
         title: 'Procesando...',

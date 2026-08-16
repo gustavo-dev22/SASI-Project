@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SASI.Authorization;
 using SASI.Dominio.Modelo;
 using SASI.Dominio.Repositories;
 using SASI.Helpers;
@@ -9,7 +10,7 @@ using X.PagedList.Extensions;
 
 namespace SASI.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = RolesSasi.Administracion)]
     public class SistemaController : Controller
     {
         private readonly ISistemaRepository _sistemaRepository;
@@ -91,7 +92,7 @@ namespace SASI.Controllers
 
                 return Ok(new { success = true, mensaje = "Sistema creado correctamente", codigo = modelo.Codigo });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new { success = false, mensaje = "Ocurrió un error al crear el sistema." });
             }
@@ -132,7 +133,7 @@ namespace SASI.Controllers
                 await _sistemaRepository.Actualizar(sistema);
                 return Ok(new { success = true, mensaje = "Sistema editado correctamente" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new { success = false, mensaje = "Ocurrió un error al editar el sistema." });
             }

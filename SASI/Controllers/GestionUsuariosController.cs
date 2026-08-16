@@ -2,7 +2,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SASI.Authorization;
 using SASI.Dominio.Repositories;
+using SASI.Helpers;
 using SASI.Infraestructura.Identity;
 using SASI.Infraestructura.Repositories;
 using SASI.Models.Requests;
@@ -17,7 +19,7 @@ namespace SASI.Controllers
         public string NombreOficina { get; set; }
     }
 
-    [Authorize]
+    [Authorize(Roles = RolesSasi.Administracion)]
     public class GestionUsuariosController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
@@ -84,10 +86,11 @@ namespace SASI.Controllers
                 Activo = true,
                 IntentosFallidosConsecutivos = 0,
                 DebeCambiarPassword = true,
-                FechaUltimoCambioPassword = horaPeru
+                FechaUltimoCambioPassword = horaPeru,
+                LockoutEnabled = true
             };
 
-            var resultado = await _userManager.CreateAsync(usuario, "Admin123.");
+            var resultado = await _userManager.CreateAsync(usuario, PasswordGenerator.GenerarContrasenaTemporal());
 
             if (resultado.Succeeded)
             {
@@ -233,7 +236,6 @@ namespace SASI.Controllers
         }
 
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> ProcesarCargaMasiva([FromBody] List<UsuarioDto> usuarios)
         {
             if (usuarios == null || usuarios.Count == 0)
@@ -241,6 +243,7 @@ namespace SASI.Controllers
 
             int guardados = 0;
             var errores = new List<object>();
+            var credenciales = new List<object>();
 
             // Opcional: precargar usuarios existentes para validar duplicados rápido
             var existentes = _userManager.Users
@@ -295,15 +298,18 @@ namespace SASI.Controllers
                         Activo = true,
                         IntentosFallidosConsecutivos = 0,
                         DebeCambiarPassword = true,
-                        FechaUltimoCambioPassword = horaPeru
+                        FechaUltimoCambioPassword = horaPeru,
+                        LockoutEnabled = true
                     };
 
-                    // Crear usuario con clave temporal
-                    var resultado = await _userManager.CreateAsync(usuario, "Admin123.");
+                    // Crear usuario con clave temporal segura
+                    var contrasenaTemporal = PasswordGenerator.GenerarContrasenaTemporal();
+                    var resultado = await _userManager.CreateAsync(usuario, contrasenaTemporal);
 
                     if (resultado.Succeeded)
                     {
                         guardados++;
+                        credenciales.Add(new { Usuario = u.Usuario, ContrasenaTemporal = contrasenaTemporal });
                         // actualizar cache de existentes
                         existentes.Add(new { UserName = u.Usuario, Email = u.Email });
                     }
@@ -319,7 +325,7 @@ namespace SASI.Controllers
                 }
             }
 
-            return Ok(new { guardados, errores });
+            return Ok(new { guardados, errores, credenciales });
         }
 
         private bool IsValidEmail(string email)
@@ -336,7 +342,6 @@ namespace SASI.Controllers
         }
 
         [HttpPost]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> ValidarExistentes([FromBody] List<string> usuarios)
         {
             if (usuarios == null || usuarios.Count == 0)

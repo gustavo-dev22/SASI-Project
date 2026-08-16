@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using SASI.Authorization;
 using SASI.Dominio.Modelo;
 using SASI.Dominio.Repositories;
 using SASI.Infraestructura.Repositories;
@@ -12,7 +13,7 @@ using X.PagedList.Extensions;
 
 namespace SASI.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = RolesSasi.Administracion)]
     public class ObjetoController : Controller
     {
         private readonly IObjetoRepository _objetoRepository;

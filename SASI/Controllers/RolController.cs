@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SASI.Authorization;
 using SASI.Dominio.Modelo;
 using SASI.Dominio.Repositories;
 using SASI.Infraestructura.Repositories;
@@ -10,7 +11,7 @@ using X.PagedList.Extensions;
 
 namespace SASI.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = RolesSasi.Administracion)]
     public class RolController : Controller
     {
         private readonly IRolRepository _rolRepository;

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SASI.Authorization;
 using SASI.Dominio.Modelo;
 using SASI.Dominio.Repositories;
 using SASI.Infraestructura.Repositories;
@@ -8,7 +9,7 @@ using X.PagedList.Extensions;
 
 namespace SASI.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = RolesSasi.Administracion)]
     public class OficinaController : Controller
     {
         private readonly IOficinaRepository _oficinaRepository;
@@ -71,7 +72,7 @@ namespace SASI.Controllers
 
                 return Ok(new { success = true, mensaje = "Oficina creada correctamente", idOficina = modelo.IdOficina });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new { success = false, mensaje = "Ocurrió un error al crear la oficina." });
             }
@@ -85,7 +86,7 @@ namespace SASI.Controllers
                 await _oficinaRepository.Actualizar(oficina);
                 return Ok(new { success = true, mensaje = "Oficina editada correctamente" });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return StatusCode(500, new { success = false, mensaje = "Ocurrió un error al editar la oficina." });
             }

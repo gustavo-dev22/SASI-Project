@@ -2,13 +2,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using SASI.Authorization;
 using SASI.Dominio.Repositories;
 using SASI.Dominio.DTO;
 using SASI.Models;
 
 namespace SASI.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = RolesSasi.Administracion)]
     public class UsuarioController : Controller
     {
         private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;

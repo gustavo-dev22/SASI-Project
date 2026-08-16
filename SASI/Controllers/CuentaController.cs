@@ -20,25 +20,21 @@ namespace SASI.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;
-        private readonly ISasiService _sasiService;
         private readonly int _sistemaId;
         private readonly int _diasVencimientoPassword;
-        private readonly int _maximoIntentosFallidosLogin;
         private readonly IAntiforgery Antiforgery;
         private readonly SasiDbContext _sasiDbContext;
 
         public CuentaController(SignInManager<ApplicationUser> signInManager, 
                                 UserManager<ApplicationUser> userManager, 
                                 IUsuarioSistemaRepository usuarioSistemaRepository, IOptions<ConfiguracionSistemaSASI> config, 
-                                ISasiService sasiService, IAntiforgery antiforgery, SasiDbContext sasiDbContext)
+                                IAntiforgery antiforgery, SasiDbContext sasiDbContext)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _usuarioSistemaRepository = usuarioSistemaRepository;
             _sistemaId = config.Value.Id;
             _diasVencimientoPassword = config.Value.DiasVencimientoPassword;
-            _maximoIntentosFallidosLogin = config.Value.IntentosFallidosPermitidosLogin;
-            _sasiService = sasiService;
             Antiforgery = antiforgery;
             _sasiDbContext = sasiDbContext;
         }
@@ -63,124 +59,108 @@ namespace SASI.Controllers
                 return Json(new { success = false, mensaje = "Debe ingresar usuario y contraseña." });
 
             var user = await _userManager.FindByEmailAsync(email);
-            if (user != null)
+
+            if (user == null || !user.Activo)
             {
-                if (!user.Activo)
+                return Json(new { success = false, tipo = "credencialesInvalidas" });
+            }
+
+            var result = await _signInManager.PasswordSignInAsync(user, password, isPersistent: false, lockoutOnFailure: true);
+
+            if (!result.Succeeded)
+            {
+                return Json(new { success = false, tipo = "credencialesInvalidas" });
+            }
+
+            var tieneAccesoSASI = await _usuarioSistemaRepository.UsuarioTieneRolActivoEnSistemaAsync(user.Id, _sistemaId);
+            if (!tieneAccesoSASI)
+            {
+                await _signInManager.SignOutAsync();
+                return Json(new { success = false, tipo = "credencialesInvalidas" });
+            }
+
+            user.IntentosFallidosConsecutivos = 0;
+            await _userManager.UpdateAsync(user);
+
+            if (user.IdOficina.HasValue)
+            {
+                var oficina = await _sasiDbContext.Oficina
+                    .FirstOrDefaultAsync(o => o.IdOficina == user.IdOficina.Value);
+
+                if (oficina != null)
                 {
-                    return Json(new { success = false, tipo = "inactivo" });
-                }
-
-                var tieneAccesoSASI = await _usuarioSistemaRepository.UsuarioTieneRolActivoEnSistemaAsync(user.Id, _sistemaId);
-                if (!tieneAccesoSASI)
-                {
-                    return Json(new { success = false, tipo = "sinRol" });
-                }
-
-                if (user.IntentosFallidosConsecutivos >= _maximoIntentosFallidosLogin)
-                {
-                    await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddMinutes(15));
-                    return Json(new { success = false, tipo = "bloqueado" });
-                }
-
-                var result = await _signInManager.PasswordSignInAsync(user, password, isPersistent: false, lockoutOnFailure: false);
-                if (result.Succeeded)
-                {
-                    user.IntentosFallidosConsecutivos = 0;
-                    await _userManager.UpdateAsync(user);
-
-                    if (user.IdOficina.HasValue)
-                    {
-                        var oficina = await _sasiDbContext.Oficina
-                            .FirstOrDefaultAsync(o => o.IdOficina == user.IdOficina.Value);
-
-                        if (oficina != null)
-                        {
-                            HttpContext.Session.SetInt32("OficinaId", oficina.IdOficina);
-                            HttpContext.Session.SetString("OficinaNombre", oficina.Nombre);
-                        }
-                    }
-
-                    // Validar si debe cambiar contraseña (primer ingreso)
-                    if (user.DebeCambiarPassword)
-                    {
-                        HttpContext.Session.SetString("RequiereCambioPassword", "true");
-                        HttpContext.Session.SetString("CambioPasswordEmail", user.Email);
-                        return Json(new { success = false, tipo = "cambioPasswordObligatorio" });
-                    }
-
-                    // Validar vencimiento de contraseña
-                    if (user.FechaUltimoCambioPassword.HasValue)
-                    {
-                        var diasDesdeCambio = (DateTime.UtcNow - user.FechaUltimoCambioPassword.Value).TotalDays;
-                        var diasRestantes = _diasVencimientoPassword - (int)diasDesdeCambio;
-                        if (diasDesdeCambio >= _diasVencimientoPassword)
-                        {
-                            HttpContext.Session.SetString("PasswordVencida", "true");
-                            return Json(new { success = false, tipo = "cambioPasswordObligatorio" });
-                        }
-                        else
-                        {
-                            HttpContext.Session.SetInt32("DiasRestantesPassword", diasRestantes);
-                        }
-                    }
-
-                    var rolPredeterminado = await _usuarioSistemaRepository.ObtenerRolPredeterminado(user.Id, _sistemaId);
-                    if (rolPredeterminado != null)
-                        HttpContext.Session.SetInt32("RolSeleccionado", rolPredeterminado.Value);
-
-                    if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-                        return Redirect(returnUrl);
-
-                    // Aquí llamas al endpoint de SASI
-                    var infoUsuario = await _sasiService.ObtenerAccesosUsuario(user.UserName, password);
-
-                    if (!string.IsNullOrEmpty(infoUsuario.Token))
-                    {
-                        HttpContext.Session.SetString("SasiApiToken", infoUsuario.Token);
-                    }
-
-                    var sistemaActual = infoUsuario.Usuario.Sistemas
-                                        .FirstOrDefault(s => s.Id == _sistemaId && s.Activo);
-
-                    if (sistemaActual == null)
-                    {
-                        return Json(new { success = false, tipo = "sinAccesos" });
-                    }
-
-                    HttpContext.Session.Remove("MenuUsuario");
-
-                    if (rolPredeterminado != null)
-                    {
-                        var rolActivo = sistemaActual.Roles.FirstOrDefault(r => r.IdRol == rolPredeterminado.Value && r.Activo);
-                        if (rolActivo != null)
-                        {
-                            var objetosDelRolPrincipal = rolActivo.Objetos
-                                .Where(o => o.Activo)
-                                .ToList();
-
-                            HttpContext.Session.SetString("MenuUsuario", JsonConvert.SerializeObject(objetosDelRolPrincipal));
-                        }
-                    }
-
-                    return Json(new { success = true, redirectUrl = Url.Action("Index", "Home") });
-                }
-                else
-                {
-                    user.IntentosFallidosConsecutivos += 1;
-                    await _userManager.UpdateAsync(user);
-
-                    int intentosRestantes = _maximoIntentosFallidosLogin - user.IntentosFallidosConsecutivos;
-
-                    if (user.IntentosFallidosConsecutivos >= _maximoIntentosFallidosLogin)
-                    {
-                        await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddMinutes(15));
-                        return Json(new { success = false, tipo = "bloqueado" });
-                    }
-                    return Json(new { success = false, tipo = "credencialesInvalidas", intentosRestantes });
+                    HttpContext.Session.SetInt32("OficinaId", oficina.IdOficina);
+                    HttpContext.Session.SetString("OficinaNombre", oficina.Nombre);
                 }
             }
 
-            return Json(new { success = false, tipo = "usuarioNoExiste" });
+            // Validar si debe cambiar contraseña (primer ingreso)
+            if (user.DebeCambiarPassword)
+            {
+                HttpContext.Session.SetString("RequiereCambioPassword", "true");
+                HttpContext.Session.SetString("CambioPasswordEmail", user.Email);
+                return Json(new { success = false, tipo = "cambioPasswordObligatorio" });
+            }
+
+            // Validar vencimiento de contraseña
+            if (user.FechaUltimoCambioPassword.HasValue)
+            {
+                var diasDesdeCambio = (DateTime.UtcNow - user.FechaUltimoCambioPassword.Value).TotalDays;
+                var diasRestantes = _diasVencimientoPassword - (int)diasDesdeCambio;
+                if (diasDesdeCambio >= _diasVencimientoPassword)
+                {
+                    HttpContext.Session.SetString("PasswordVencida", "true");
+                    return Json(new { success = false, tipo = "cambioPasswordObligatorio" });
+                }
+                else
+                {
+                    HttpContext.Session.SetInt32("DiasRestantesPassword", diasRestantes);
+                }
+            }
+
+            var rolPredeterminado = await _usuarioSistemaRepository.ObtenerRolPredeterminado(user.Id, _sistemaId);
+            if (rolPredeterminado != null)
+                HttpContext.Session.SetInt32("RolSeleccionado", rolPredeterminado.Value);
+
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                return Redirect(returnUrl);
+
+            var sistemasYRoles = await _usuarioSistemaRepository.ObtenerSistemasYRolesDelUsuarioAsync(user.Id);
+
+            if (!sistemasYRoles.Any(sr => sr.SistemaId == _sistemaId && sr.SistemaActivo && sr.UsuarioSistemaRolActivo))
+            {
+                await _signInManager.SignOutAsync();
+                return Json(new { success = false, tipo = "credencialesInvalidas" });
+            }
+
+            HttpContext.Session.Remove("MenuUsuario");
+
+            if (rolPredeterminado != null)
+            {
+                var rolActivo = sistemasYRoles
+                    .FirstOrDefault(sr => sr.RolId == rolPredeterminado.Value && sr.SistemaId == _sistemaId && sr.UsuarioSistemaRolActivo);
+
+                if (rolActivo != null)
+                {
+                    var objetosDelRolPrincipal = rolActivo.Objetos
+                        .Where(o => o.Activo)
+                        .Select(o => new MenuItemViewModel
+                        {
+                            Id = o.IdObjeto,
+                            Nombre = o.Nombre,
+                            Url = o.Url,
+                            Icono = o.Icono ?? string.Empty,
+                            Tipo = o.Tipo,
+                            IdPadre = o.IdPadre,
+                            Orden = o.Orden
+                        })
+                        .ToList();
+
+                    HttpContext.Session.SetString("MenuUsuario", JsonConvert.SerializeObject(objetosDelRolPrincipal));
+                }
+            }
+
+            return Json(new { success = true, redirectUrl = Url.Action("Index", "Home") });
         }
 
         [HttpPost]
@@ -220,21 +200,17 @@ namespace SASI.Controllers
             HttpContext.Session.SetInt32("RolSeleccionado", rolId);
 
             var user = await _userManager.GetUserAsync(User);
-
-            var token = HttpContext.Session.GetString("SasiApiToken");
-            if (string.IsNullOrEmpty(token))
+            if (user == null)
             {
                 return RedirectToAction("Login", "Cuenta");
             }
 
-            var infoUsuario = await _sasiService.ObtenerAccesosUsuarioConToken(user.UserName, token);
+            var sistemasYRoles = await _usuarioSistemaRepository.ObtenerSistemasYRolesDelUsuarioAsync(user.Id);
 
-            var sistemaActual = infoUsuario.Usuario.Sistemas
-                                    .FirstOrDefault(s => s.Id == _sistemaId && s.Activo);
-
-            if (sistemaActual != null)
+            if (sistemasYRoles.Any(sr => sr.SistemaId == _sistemaId && sr.SistemaActivo))
             {
-                var nuevoRol = sistemaActual.Roles.FirstOrDefault(r => r.IdRol == rolId && r.Activo);
+                var nuevoRol = sistemasYRoles
+                    .FirstOrDefault(sr => sr.RolId == rolId && sr.SistemaId == _sistemaId && sr.UsuarioSistemaRolActivo);
 
                 if (nuevoRol != null)
                 {
@@ -242,6 +218,16 @@ namespace SASI.Controllers
                                         .Where(o => o.Activo)
                                         .GroupBy(o => o.IdObjeto)
                                         .Select(g => g.First())
+                                        .Select(o => new MenuItemViewModel
+                                        {
+                                            Id = o.IdObjeto,
+                                            Nombre = o.Nombre,
+                                            Url = o.Url,
+                                            Icono = o.Icono ?? string.Empty,
+                                            Tipo = o.Tipo,
+                                            IdPadre = o.IdPadre,
+                                            Orden = o.Orden
+                                        })
                                         .ToList();
 
                     HttpContext.Session.SetString("MenuUsuario", JsonConvert.SerializeObject(listaObjetos));

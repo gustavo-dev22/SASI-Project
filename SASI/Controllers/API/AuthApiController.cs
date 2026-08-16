@@ -7,9 +7,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using SASI.Authorization;
 using SASI.Dominio.DTO;
 using SASI.Dominio.Modelo;
 using SASI.Dominio.Repositories;
+using SASI.Helpers;
 using SASI.Infraestructura.Identity;
 using SASI.Infraestructura.Repositories;
 using SASI.Models.Requests;
@@ -27,7 +29,6 @@ namespace SASI.Controllers.API
         private readonly IConfiguration _config;
         private readonly IUsuarioSistemaRepository _usuarioSistemaRepository;
         private readonly SasiDbContext _sasiDbContext;
-        private const int MAX_INTENTOS = 3;
 
         public AuthController(UserManager<ApplicationUser> userManager, IConfiguration config, IUsuarioSistemaRepository usuarioSistemaRepository, SasiDbContext sasiDbContext)
         {
@@ -41,75 +42,44 @@ namespace SASI.Controllers.API
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var user = await _userManager.FindByNameAsync(request.UserName); 
+            var user = await _userManager.FindByNameAsync(request.UserName);
 
-            // Usuario no encontrado (puedes ocultar si prefieres no revelar existencia)
             if (user == null)
             {
                 return Ok(new
                 {
                     success = false,
                     codigo = "CREDENCIALES_INCORRECTAS",
-                    message = "Credenciales incorrectas",
-                    bloqueado = false,
-                    intentosFallidos = 0,
-                    intentosRestantes = MAX_INTENTOS
+                    message = "Usuario o contraseña incorrectos",
+                    bloqueado = false
                 });
             }
 
-            // Usuario bloqueado
-            if (user.IntentosFallidosConsecutivos >= MAX_INTENTOS)
+            if (await _userManager.IsLockedOutAsync(user))
             {
                 return Ok(new
                 {
                     success = false,
-                    codigo = "USUARIO_BLOQUEADO",
-                    message = "Usuario bloqueado por intentos fallidos",
-                    bloqueado = true,
-                    intentosFallidos = user.IntentosFallidosConsecutivos,
-                    intentosRestantes = 0
+                    codigo = "CREDENCIALES_INCORRECTAS",
+                    message = "Usuario o contraseña incorrectos",
+                    bloqueado = false
                 });
             }
 
-            // Contraseña incorrecta
             if (!await _userManager.CheckPasswordAsync(user, request.Password))
             {
-                user.IntentosFallidosConsecutivos++;
+                await _userManager.AccessFailedAsync(user);
 
-                if (user.IntentosFallidosConsecutivos >= MAX_INTENTOS)
-                {
-                    user.LockoutEnabled = true;
-                    user.LockoutEnd = DateTimeOffset.MaxValue;
-                    await _userManager.UpdateAsync(user);
-
-                    return Ok(new
-                    {
-                        success = false,
-                        codigo = "USUARIO_BLOQUEADO",
-                        message = "Usuario bloqueado por intentos fallidos",
-                        bloqueado = true,
-                        intentosFallidos = user.IntentosFallidosConsecutivos,
-                        intentosRestantes = 0
-                    });
-                }
-
-                await _userManager.UpdateAsync(user);
-
-                var restan = MAX_INTENTOS - user.IntentosFallidosConsecutivos;
                 return Ok(new
                 {
                     success = false,
-                    codigo = "PASSWORD_INCORRECTA",
-                    message = "Contraseña incorrecta",
-                    bloqueado = false,
-                    intentosFallidos = user.IntentosFallidosConsecutivos,
-                    intentosRestantes = restan
+                    codigo = "CREDENCIALES_INCORRECTAS",
+                    message = "Usuario o contraseña incorrectos",
+                    bloqueado = false
                 });
             }
 
-            // Si el login fue exitoso, reiniciar contador de intentos
-            user.IntentosFallidosConsecutivos = 0;
-            await _userManager.UpdateAsync(user);
+            await _userManager.ResetAccessFailedCountAsync(user);
 
             // Por esta línea:
             var sistemasYRoles = await _usuarioSistemaRepository.ObtenerSistemasYRolesDelUsuarioAsync(user.Id);
@@ -362,7 +332,7 @@ namespace SASI.Controllers.API
         }
 
         [HttpPost("sga/crear-alumno")]
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = "Administrador")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme, Roles = RolesSasi.Administracion)]
         public async Task<IActionResult> CrearAlumnoDesdeSga([FromBody] NuevoUsuarioApiRequest dto)
         {
             // 1. Validaciones de existencia
@@ -379,12 +349,14 @@ namespace SASI.Controllers.API
                 AuditUsuarioCreacion = "SGA_SYSTEM",
                 AuditFechaCreacion = DateTime.Now,
                 DebeCambiarPassword = true,
+                LockoutEnabled = true,
                 IpCreacion = HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "127.0.0.1",
                 IdOficina = 9999
             };
 
-            // 3. Crear en AspNetUsers
-            var resultado = await _userManager.CreateAsync(usuario, dto.Dni + "Sga."); 
+            // 3. Crear en AspNetUsers con contraseña temporal segura
+            var contrasenaTemporal = PasswordGenerator.GenerarContrasenaTemporal();
+            var resultado = await _userManager.CreateAsync(usuario, contrasenaTemporal); 
 
             if (resultado.Succeeded)
             {
@@ -404,7 +376,7 @@ namespace SASI.Controllers.API
                     await _usuarioSistemaRepository.AsignarUsuarioASistemaAsync(asignacion.UsuarioId.ToString(), asignacion.SistemaId, asignacion.RolId, asignacion.EsPrincipal);
 
                     // 5. Retornar éxito al SGA
-                    return Ok(new { success = true, userId = usuario.Id });
+                    return Ok(new { success = true, userId = usuario.Id, contrasenaTemporal });
                 }
                 catch (Exception)
                 {

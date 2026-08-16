@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SASI.Configuration;
 using SASI.Dominio.Repositories;
+using SASI.Filters;
 using SASI.Infraestructura.Identity;
 using SASI.Infraestructura.Repositories;
 using Serilog;
@@ -48,7 +49,6 @@ builder.Services.AddDbContext<IdentityDbContext>(options =>
     b => b.MigrationsAssembly("SASI")));
 
 //builder.Services.AddHttpClient();
-builder.Services.AddHttpClient<ISasiService, SasiService>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<IUserContext, UserContext>();
@@ -56,6 +56,8 @@ builder.Services.AddScoped<IUserContext, UserContext>();
 builder.Services.AddIdentity<ApplicationUser, IdentityRole<Guid>>()
     .AddEntityFrameworkStores<IdentityDbContext>()
     .AddDefaultTokenProviders();
+
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, SasiUserClaimsPrincipalFactory>();
 
 builder.Services.AddTransient<ISistemaRepository, SistemaRepository>();
 builder.Services.AddTransient<IRolRepository, RolRepository>();
@@ -141,7 +143,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<AutoValidateAntiforgeryFilter>();
+});
+
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "RequestVerificationToken";
+    options.Cookie.Name = ".SASI.Antiforgery";
+    options.Cookie.HttpOnly = false;
+});
 
 builder.Services.AddSession(options =>
 {

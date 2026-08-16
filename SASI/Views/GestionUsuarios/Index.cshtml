@@ -232,11 +232,18 @@ ZUMH
             return $.get('@Url.Action("Listar", "Oficina")', function (data) {
                 let $select = $("#oficinaId");
                 $select.empty();
-                $select.append('<option value="">Seleccione una oficina</option>');
+
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = "Seleccione una oficina";
+                $select.append(placeholder);
 
                 data.forEach(oficina => {
-                    let selected = oficina.idOficina == selectedId ? "selected" : "";
-                    $select.append(`<option value="${oficina.idOficina}" ${selected}>${oficina.nombre}</option>`);
+                    const opt = document.createElement("option");
+                    opt.value = oficina.idOficina;
+                    opt.textContent = oficina.nombre;
+                    if (String(oficina.idOficina) === String(selectedId)) opt.selected = true;
+                    $select.append(opt);
                 });
 
                 $select.trigger('change');
@@ -298,10 +305,17 @@ ZUMH
         function verSistemas(userId) {
             idUsuarioSeleccionado = userId;
             $.get('@Url.Action("ListarSistemasPorUsuario", "GestionUsuarios")', { id: userId }, function (sistemas) {
-                let html = "";
+                const tbody = document.getElementById("tablaSistemasUsuario");
+                tbody.innerHTML = "";
 
                 if (sistemas.length === 0) {
-                    html = `<tr><td colspan="7" class="text-center">No se encontraron sistemas asignados.</td></tr>`;
+                    const tr = document.createElement("tr");
+                    const td = document.createElement("td");
+                    td.colSpan = 7;
+                    td.className = "text-center";
+                    td.textContent = "No se encontraron sistemas asignados.";
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
                 } else {
                     // Agrupar por nombreSistema
                     const sistemasAgrupados = sistemas.reduce((acc, s) => {
@@ -313,50 +327,84 @@ ZUMH
                     let contador = 1;
 
                     for (const nombreSistema in sistemasAgrupados) {
-                        html += `
-                            <tr class="table-secondary">
-                                <td colspan="7" class="fw-bold">${nombreSistema}</td>
-                            </tr>
-                        `;
+                        const trGrupo = document.createElement("tr");
+                        trGrupo.className = "table-secondary";
+                        const tdGrupo = document.createElement("td");
+                        tdGrupo.colSpan = 7;
+                        tdGrupo.className = "fw-bold";
+                        tdGrupo.textContent = nombreSistema;
+                        trGrupo.appendChild(tdGrupo);
+                        tbody.appendChild(trGrupo);
 
                         sistemasAgrupados[nombreSistema].forEach(s => {
-                            html += `
-                                <tr>
-                                    <td style='vertical-align:middle'>${contador++}</td>
-                                    <td style='vertical-align:middle'>${s.nombreSistema}</td>
-                                    <td style='text-align:center; vertical-align:middle'>${s.nombreRol}</td>
-                                    <td style='text-align:center; vertical-align:middle'>${s.fechaAsignacion}</td>
-                                    <td style='text-align:center; vertical-align:middle'>
-                                        <input type="checkbox" disabled id="estado-visual-${s.sistemaId}-${s.rolId}" ${s.activo ? "checked" : ""} />
-                                    </td>
-                                    <td class="text-center" style='vertical-align:middle'>
-                                        <div class="form-check form-switch d-flex justify-content-center">
-                                            <input class="form-check-input" type="checkbox"
-                                                   role="switch"
-                                                   id="switch-${s.sistemaId}-${s.rolId}"
-                                                   data-bs-toggle="tooltip"
-                                                   data-bs-placement="top"
-                                                   title="${s.activo ? 'Activo' : 'Inactivo'}"
-                                                   onchange="toggleSistemaActivo('${userId}', ${s.sistemaId}, ${s.rolId}, this.checked)"
-                                                   ${s.activo ? 'checked' : ''}>
-                                        </div>
-                                    </td>
-                                    <td style='text-align:center; vertical-align:middle'>
-                                        <input type="radio"
-                                               name="principal_${s.sistemaId}"
-                                               class="radio-principal"
-                                               data-sistema-id="${s.sistemaId}"
-                                               data-rol-id="${s.rolId}"
-                                               ${s.esPrincipal ? 'checked' : ''}
-                                               ${!s.activo ? 'disabled' : ''} />
-                                    </td>
-                                </tr>
-                            `;
+                            const tr = document.createElement("tr");
+
+                            const tdContador = document.createElement("td");
+                            tdContador.style.verticalAlign = "middle";
+                            tdContador.textContent = contador++;
+
+                            const tdSistema = document.createElement("td");
+                            tdSistema.style.verticalAlign = "middle";
+                            tdSistema.textContent = s.nombreSistema;
+
+                            const tdRol = document.createElement("td");
+                            tdRol.style.cssText = "text-align:center; vertical-align:middle";
+                            tdRol.textContent = s.nombreRol;
+
+                            const tdFecha = document.createElement("td");
+                            tdFecha.style.cssText = "text-align:center; vertical-align:middle";
+                            tdFecha.textContent = s.fechaAsignacion;
+
+                            const tdCheck = document.createElement("td");
+                            tdCheck.style.cssText = "text-align:center; vertical-align:middle";
+                            const chk = document.createElement("input");
+                            chk.type = "checkbox";
+                            chk.disabled = true;
+                            chk.id = `estado-visual-${s.sistemaId}-${s.rolId}`;
+                            chk.checked = !!s.activo;
+                            tdCheck.appendChild(chk);
+
+                            const tdSwitch = document.createElement("td");
+                            tdSwitch.className = "text-center";
+                            tdSwitch.style.verticalAlign = "middle";
+                            const divSwitch = document.createElement("div");
+                            divSwitch.className = "form-check form-switch d-flex justify-content-center";
+                            const sw = document.createElement("input");
+                            sw.className = "form-check-input";
+                            sw.type = "checkbox";
+                            sw.role = "switch";
+                            sw.id = `switch-${s.sistemaId}-${s.rolId}`;
+                            sw.dataset.bsToggle = "tooltip";
+                            sw.dataset.bsPlacement = "top";
+                            sw.title = s.activo ? "Activo" : "Inactivo";
+                            sw.checked = !!s.activo;
+                            sw.setAttribute("onchange", `toggleSistemaActivo('${userId}', ${s.sistemaId}, ${s.rolId}, this.checked)`);
+                            divSwitch.appendChild(sw);
+                            tdSwitch.appendChild(divSwitch);
+
+                            const tdRadio = document.createElement("td");
+                            tdRadio.style.cssText = "text-align:center; vertical-align:middle";
+                            const radio = document.createElement("input");
+                            radio.type = "radio";
+                            radio.name = `principal_${s.sistemaId}`;
+                            radio.className = "radio-principal";
+                            radio.dataset.sistemaId = s.sistemaId;
+                            radio.dataset.rolId = s.rolId;
+                            radio.checked = !!s.esPrincipal;
+                            radio.disabled = !s.activo;
+                            tdRadio.appendChild(radio);
+
+                            tr.appendChild(tdContador);
+                            tr.appendChild(tdSistema);
+                            tr.appendChild(tdRol);
+                            tr.appendChild(tdFecha);
+                            tr.appendChild(tdCheck);
+                            tr.appendChild(tdSwitch);
+                            tr.appendChild(tdRadio);
+                            tbody.appendChild(tr);
                         });
                     }
                 }
-
-                $("#tablaSistemasUsuario").html(html);
 
                 var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
                 tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -851,7 +899,10 @@ ZUMH
           try {
             const resp = await fetch('/SASI/GestionUsuarios/ValidarExistentes', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector('meta[name="RequestVerificationToken"]')?.getAttribute('content') || ''
+              },
               body: JSON.stringify(usuariosAValidar)
             });
 
@@ -893,15 +944,29 @@ ZUMH
 
           pageItems.forEach((r, i) => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${r.index}</td>
-              <td>${r.nombreCompleto}</td>
-              <td>${r.usuario}</td>
-              <td>${r.email}</td>
-              <td>${r.oficina}</td>
-              <td>${r.estado === 'OK' ? '<span class="badge bg-success">OK</span>' : '<span class="badge bg-danger">ERROR</span>'}</td>
-              <td>${r.observaciones}</td>
-            `;
+
+            const agregarCelda = (texto, cssText) => {
+              const td = document.createElement('td');
+              if (cssText) td.style.cssText = cssText;
+              td.textContent = texto;
+              tr.appendChild(td);
+              return td;
+            };
+
+            agregarCelda(r.index);
+            agregarCelda(r.nombreCompleto);
+            agregarCelda(r.usuario);
+            agregarCelda(r.email);
+            agregarCelda(r.oficina);
+
+            const tdEstado = agregarCelda('', 'text-align:center');
+            const badge = document.createElement('span');
+            badge.className = r.estado === 'OK' ? 'badge bg-success' : 'badge bg-danger';
+            badge.textContent = r.estado === 'OK' ? 'OK' : 'ERROR';
+            tdEstado.appendChild(badge);
+
+            agregarCelda(r.observaciones);
+
             tbodyPreview.appendChild(tr);
           });
 
@@ -1006,6 +1071,7 @@ ZUMH
           const xhr = new XMLHttpRequest();
           xhr.open('POST', url, true);
           xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
+          xhr.setRequestHeader('RequestVerificationToken', document.querySelector('meta[name="RequestVerificationToken"]')?.getAttribute('content') || '');
 
           xhr.upload.onprogress = function (evt) {
             if (evt.lengthComputable) {
@@ -1068,7 +1134,7 @@ ZUMH
             bar.innerText = percent + '%';
           }
           const txt = document.getElementById('swalProgressText');
-          if (txt) txt.innerHTML = texto;
+          if (txt) txt.textContent = texto;
         }
     </script>
 }

@@ -1,6 +1,7 @@
 ﻿@using SASI.Infraestructura.Identity
+@using X.PagedList
 
-@model List<ApplicationUser>
+@model IPagedList<ApplicationUser>
 
 @{
     ViewBag.Title = "Gestión de Usuarios";
@@ -650,6 +651,21 @@ ZUMH
                     $("#resultadoUsuarios").html(data);
                 }).fail(function () {
                     Swal.fire("Error", "Ocurrió un error al buscar usuarios.", "error");
+                });
+            });
+
+            // Paginación server-side vía AJAX (delegado: funciona tras cada recarga parcial)
+            $(document).on('click', '#resultadoUsuarios .pagination a', function (e) {
+                e.preventDefault();
+                const url = new URL(this.href, window.location.origin);
+                const page = url.searchParams.get('page');
+                const filtro = $("#filtro").val();
+                if (!page) return;
+
+                $.post('@Url.Action("Buscar", "GestionUsuarios")', { filtro, page }, function (data) {
+                    $("#resultadoUsuarios").html(data);
+                }).fail(function () {
+                    Swal.fire("Error", "Ocurrió un error al paginar los resultados.", "error");
                 });
             });
 

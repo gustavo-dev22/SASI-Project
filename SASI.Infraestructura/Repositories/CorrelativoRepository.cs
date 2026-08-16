@@ -34,26 +34,18 @@ namespace SASI.Infraestructura.Repositories
 
         public async Task<int> ObtenerSiguienteCorrelativoAsync(string entidad)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var siguiente = await _context.Database
+                .SqlQuery<int>($"UPDATE Correlativo SET UltimoNumero = UltimoNumero + 1 OUTPUT INSERTED.UltimoNumero WHERE Entidad = {entidad}")
+                .SingleOrDefaultAsync();
 
-            var correlativo = await _context.Correlativos
-                .FirstOrDefaultAsync(c => c.Entidad == entidad);
+            if (siguiente > 0)
+                return siguiente;
 
-            if (correlativo == null)
-            {
-                correlativo = new Correlativo { Entidad = entidad, UltimoNumero = 1 };
-                _context.Correlativos.Add(correlativo);
-            }
-            else
-            {
-                correlativo.UltimoNumero++;
-                _context.Correlativos.Update(correlativo);
-            }
-
+            var nuevo = new Correlativo { Entidad = entidad, UltimoNumero = 1 };
+            _context.Correlativos.Add(nuevo);
             await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
 
-            return correlativo.UltimoNumero;
+            return nuevo.UltimoNumero;
         }
 
         public async Task<int> ObtenerValorActualCorrelativo(string entidad)

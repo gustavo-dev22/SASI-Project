@@ -74,11 +74,10 @@ namespace SASI.Infraestructura.Repositories
 
         public async Task<Oficina> ObtenerPorNombre(string nombre)
         {
-            var nombreNormalizado = nombre.ToLower().Trim();
+            var nombreNormalizado = nombre.Trim();
 
             return await _context.Oficina
-                    .FirstOrDefaultAsync(s =>
-                    EF.Functions.Collate(s.Nombre.ToLower(), "SQL_Latin1_General_CP1_CI_AI") == nombreNormalizado);
+                    .FirstOrDefaultAsync(s => s.Nombre == nombreNormalizado);
         }
 
         public async Task<List<UsuarioAsignadoDto>> ObtenerUsuariosPorOficinaAsync(int idOficina)

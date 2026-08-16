@@ -108,7 +108,11 @@ namespace SASI.Controllers.API
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expires = DateTime.UtcNow.AddHours(4);
+
+            var horasExpiracion = double.TryParse(_config["Jwt:ExpiresHours"], out var horasConfig)
+                ? horasConfig
+                : 1.0;
+            var expires = DateTime.UtcNow.AddHours(horasExpiracion);
 
             Oficina oficina = null;
             if (user.IdOficina.HasValue)
@@ -380,7 +384,9 @@ namespace SASI.Controllers.API
                 }
                 catch (Exception)
                 {
-                    return StatusCode(500, new { success = false, message = "Usuario creado pero falló la asignación al sistema." });
+                    // Rollback compensatorio: eliminar el usuario creado para no dejar registros huérfanos
+                    await _userManager.DeleteAsync(usuario);
+                    return StatusCode(500, new { success = false, message = "Usuario creado pero falló la asignación al sistema. La operación fue revertida." });
                 }
             }
 

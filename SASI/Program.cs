@@ -12,6 +12,7 @@ using SASI.Dominio.Repositories;
 using SASI.Filters;
 using SASI.Infraestructura.Identity;
 using SASI.Infraestructura.Repositories;
+using SASI.Middleware;
 using Serilog;
 using SistemaConvocatorias.Infraestructura.Datos;
 using System.Text;
@@ -44,7 +45,8 @@ builder.Services.AddCors(options =>
 builder.Host.UseSerilog(); // Usar Serilog como logger
 
 builder.Services.AddDbContext<SasiDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
+    b => b.MigrationsAssembly("SASI")));
 
 builder.Services.AddDbContext<IdentityDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
@@ -73,7 +75,11 @@ builder.Services.AddTransient<IOficinaRepository, OficinaRepository>();
     .PersistKeysToFileSystem(new DirectoryInfo(@"C:\claveproteccion"))
     .SetApplicationName("SASI");*/
 
+var dataProtectionPath = builder.Configuration["SasiDataProtection:KeysPath"]
+    ?? Path.Combine(builder.Environment.ContentRootPath, "DataProtection-Keys");
+
 builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath))
     .SetApplicationName("SASI");
 
 builder.Services.Configure<IdentityOptions>(options =>
@@ -93,9 +99,10 @@ builder.Services.ConfigureApplicationCookie(options =>
 
     options.Cookie.IsEssential = true;
     options.Cookie.HttpOnly = true;
-    //options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
-    options.SlidingExpiration = false;
-    options.Cookie.MaxAge = null;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    options.SlidingExpiration = true;
 
     // Agregar eventos para corregir rutas
     options.Events = new CookieAuthenticationEvents
@@ -139,6 +146,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.FromMinutes(5),
             ValidIssuer = jwtIssuer,
             ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
@@ -162,13 +170,17 @@ builder.Services.AddAntiforgery(options =>
     options.HeaderName = "RequestVerificationToken";
     options.Cookie.Name = ".SASI.Antiforgery";
     options.Cookie.HttpOnly = false;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
 });
 
 builder.Services.AddSession(options =>
 {
-    //options.IdleTimeout = TimeSpan.FromMinutes(10);
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -208,6 +220,8 @@ var app = builder.Build();
 //}
 
 app.UsePathBase("/SASI");
+
+app.UseMiddleware<SecurityHeadersMiddleware>();
 
 if (!app.Environment.IsDevelopment())
 {

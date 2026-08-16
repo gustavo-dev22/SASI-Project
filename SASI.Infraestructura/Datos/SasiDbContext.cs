@@ -82,6 +82,19 @@ namespace SistemaConvocatorias.Infraestructura.Datos
                 .WithMany(s => s.Roles)
                 .HasForeignKey(r => r.IdSistema);
 
+            // Índices en claves foráneas y columnas de consulta frecuente
+            modelBuilder.Entity<Rol>().HasIndex(r => r.IdSistema);
+
+            modelBuilder.Entity<UsuarioSistema>().HasIndex(us => us.SistemaId);
+            modelBuilder.Entity<UsuarioSistema>().HasIndex(us => us.RolId);
+            modelBuilder.Entity<UsuarioSistema>().HasIndex(us => us.UsuarioId);
+
+            modelBuilder.Entity<Objeto>().HasIndex(o => o.IdSistema);
+            modelBuilder.Entity<Objeto>().HasIndex(o => o.IdPadre);
+
+            modelBuilder.Entity<RolObjeto>().HasIndex(ro => ro.IdRol);
+            modelBuilder.Entity<RolObjeto>().HasIndex(ro => ro.IdObjeto);
+
             // Relación Objeto -> ObjetoPadre (auto-relación)
             modelBuilder.Entity<Objeto>()
                 .HasOne(o => o.ObjetoPadre)

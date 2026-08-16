@@ -1,6 +1,8 @@
 ﻿@using SASI.Infraestructura.Identity
+@using X.PagedList
+@using X.PagedList.Mvc.Core
 
-@model List<ApplicationUser>
+@model IPagedList<ApplicationUser>
 
 <table class="table table-bordered">
     <thead class="table-header-custom">
@@ -54,3 +56,16 @@
         }
     </tbody>
 </table>
+
+<div class="d-flex justify-content-center mt-3">
+    @Html.PagedListPager(Model, page => Url.Action("Buscar", "GestionUsuarios", new { filtro = ViewBag.Filtro, page }), new PagedListRenderOptions
+    {
+        DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+        DisplayLinkToLastPage = PagedListDisplayMode.Always,
+        DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+        DisplayLinkToNextPage = PagedListDisplayMode.Always,
+        UlElementClasses = new[] { "pagination", "pagination-sm" },
+        LiElementClasses = new[] { "page-item" },
+        PageClasses = new[] { "page-link" }
+    })
+</div>

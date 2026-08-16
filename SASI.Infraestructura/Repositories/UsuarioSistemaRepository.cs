@@ -54,6 +54,8 @@ namespace SASI.Infraestructura.Repositories
                 }
             }
 
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
             var nuevaAsignacion = new UsuarioSistema
             {
                 UsuarioId = usuarioGuid,
@@ -66,6 +68,7 @@ namespace SASI.Infraestructura.Repositories
 
             _context.UsuarioSistemas.Add(nuevaAsignacion);
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return new ResultadoAsignacionUsuarioDto { Exito = true, Mensaje = "Asignación registrada correctamente." };
         }
@@ -100,11 +103,11 @@ namespace SASI.Infraestructura.Repositories
 
             var rolIds = asignaciones.Select(a => a.RolId).Distinct().ToList();
 
-            // 2. Obtener todos los usuarios y filtrar en memoria (comparando string con string)
-            var todosLosUsuarios = await _userManager.Users.ToListAsync();
-            var usuarios = todosLosUsuarios
-                .Where(u => asignaciones.Any(a => a.UsuarioId == u.Id))
-                .ToList();
+            // 2. Obtener únicamente los usuarios asignados (consulta en BD con IN)
+            var usuarioIds = asignaciones.Select(a => a.UsuarioId).Distinct().ToList();
+            var usuarios = await _userManager.Users
+                .Where(u => usuarioIds.Contains(u.Id))
+                .ToListAsync();
 
             // 3. Obtener roles
             var roles = await _context.Roles
@@ -252,9 +255,10 @@ namespace SASI.Infraestructura.Repositories
             var usuarioIds = asignaciones.Select(a => a.UsuarioId).Distinct().ToList();
             var rolIds = asignaciones.Select(a => a.RolId).Distinct().ToList();
 
-            // 2. Obtener usuarios
-            var todosLosUsuarios = await _userManager.Users.ToListAsync();
-            var usuarios = todosLosUsuarios.Where(u => usuarioIds.Contains(u.Id)).ToList();
+            // 2. Obtener usuarios (consulta en BD con IN)
+            var usuarios = await _userManager.Users
+                .Where(u => usuarioIds.Contains(u.Id))
+                .ToListAsync();
 
             // 3. Obtener roles
             var roles = await _context.Roles

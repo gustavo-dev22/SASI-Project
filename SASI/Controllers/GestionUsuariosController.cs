@@ -8,6 +8,7 @@ using SASI.Helpers;
 using SASI.Infraestructura.Identity;
 using SASI.Infraestructura.Repositories;
 using SASI.Models.Requests;
+using X.PagedList;
 
 namespace SASI.Controllers
 {
@@ -43,17 +44,28 @@ namespace SASI.Controllers
 
         public IActionResult Index()
         {
-            return View(new List<ApplicationUser>());
+            return View(new StaticPagedList<ApplicationUser>(new List<ApplicationUser>(), 1, 10, 0));
         }
 
         [HttpPost]
-        public async Task<IActionResult> Buscar(string filtro)
+        public async Task<IActionResult> Buscar(string filtro, int page = 1)
         {
-            var usuarios = await _userManager.Users
-                .Where(u => u.NombreCompleto.Contains(filtro))
+            const int pageSize = 10;
+            if (page < 1) page = 1;
+
+            var query = _userManager.Users.Where(u => u.NombreCompleto.Contains(filtro));
+
+            var total = await query.CountAsync();
+
+            var usuarios = await query
+                .OrderBy(u => u.NombreCompleto)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            return PartialView("_TablaUsuarios", usuarios);
+            ViewBag.Filtro = filtro;
+
+            return PartialView("_TablaUsuarios", new StaticPagedList<ApplicationUser>(usuarios, page, pageSize, total));
         }
 
         [HttpPost]

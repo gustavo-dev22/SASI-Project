@@ -29,7 +29,7 @@ namespace SASI.Middleware
                   "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
                   "img-src 'self' data:; " +
                   "font-src 'self' data: https://cdn.jsdelivr.net; " +
-                  "connect-src 'self'; " +
+                  "connect-src 'self' https://cdn.jsdelivr.net; " +
                   "frame-ancestors 'self'"
                 : "default-src 'self'; " +
                   "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net http://localhost:*; " +

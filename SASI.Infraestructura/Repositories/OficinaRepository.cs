@@ -58,13 +58,14 @@ namespace SASI.Infraestructura.Repositories
         public async Task<IEnumerable<Oficina>> ListarActivasAsync()
         {
             return await _context.Oficina
+                    .AsNoTracking()
                     .Where(o => o.Activo)
                     .ToListAsync();
         }
 
         public async Task<List<Oficina>> ListarAsync()
         {
-            return await _context.Oficina.ToListAsync();
+            return await _context.Oficina.AsNoTracking().ToListAsync();
         }
 
         public async Task<Oficina?> ObtenerPorId(int id)

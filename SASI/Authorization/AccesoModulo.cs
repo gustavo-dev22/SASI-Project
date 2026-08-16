@@ -56,22 +56,25 @@ namespace SASI.Authorization
                 rolSeleccionado = httpContext.Session.GetInt32("RolSeleccionado");
             }
 
-            var rolId = rolSeleccionado ?? await (
-                    from us in _context.UsuarioSistemas
-                    where us.UsuarioId == usuarioGuid && us.SistemaId == _sistemaId && us.Activo
-                    orderby us.EsPrincipal descending
-                    select (int?)us.RolId)
-                .FirstOrDefaultAsync();
-
-            if (!rolId.HasValue) return;
-
-            var tieneAcceso = await (
-                    from ro in _context.RolObjetos
-                    join obj in _context.Objetos on ro.IdObjeto equals obj.IdObjeto
-                    where ro.IdRol == rolId.Value && ro.Activo && obj.Activo
-                          && obj.Url != null && EF.Functions.Like(obj.Url, controller + "%")
-                    select 1)
-                .AnyAsync();
+            // Consulta única: si hay rol seleccionado, se valida sobre ese rol;
+            // si no, se valida sobre cualquier rol activo del usuario en el sistema.
+            var tieneAcceso = rolSeleccionado.HasValue
+                ? await (
+                        from ro in _context.RolObjetos
+                        join obj in _context.Objetos on ro.IdObjeto equals obj.IdObjeto
+                        where ro.IdRol == rolSeleccionado.Value && ro.Activo && obj.Activo
+                              && obj.Url != null && EF.Functions.Like(obj.Url, controller + "%")
+                        select 1)
+                    .AnyAsync()
+                : await (
+                        from ro in _context.RolObjetos
+                        join obj in _context.Objetos on ro.IdObjeto equals obj.IdObjeto
+                        join us in _context.UsuarioSistemas on ro.IdRol equals us.RolId
+                        where us.UsuarioId == usuarioGuid && us.SistemaId == _sistemaId && us.Activo
+                              && ro.Activo && obj.Activo
+                              && obj.Url != null && EF.Functions.Like(obj.Url, controller + "%")
+                        select 1)
+                    .AnyAsync();
 
             if (tieneAcceso) context.Succeed(requirement);
         }

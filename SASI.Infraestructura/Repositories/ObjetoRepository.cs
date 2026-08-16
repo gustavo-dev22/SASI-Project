@@ -50,6 +50,7 @@ namespace SASI.Infraestructura.Repositories
         public async Task<IEnumerable<Objeto>> ListarObjetosPadrePorSistemaAsync(int idSistema)
         {
             return await _context.Objetos
+            .AsNoTracking()
             .Where(o => o.IdSistema == idSistema && o.IdPadre == null)
             .OrderBy(o => o.Orden)
             .ToListAsync();
@@ -58,6 +59,7 @@ namespace SASI.Infraestructura.Repositories
         public async Task<List<Objeto>> ObtenerPorIdsAsync(List<int> ids)
         {
             return await _context.Objetos
+                .AsNoTracking()
                 .Where(o => ids.Contains(o.IdObjeto))
                 .ToListAsync();
         }
@@ -70,6 +72,7 @@ namespace SASI.Infraestructura.Repositories
         public async Task<IEnumerable<Objeto>> ObtenerPorSistemaAsync(int idSistema)
         {
             return await _context.Objetos
+            .AsNoTracking()
             .Where(o => o.IdSistema == idSistema)
             .OrderBy(o => o.Orden)
             .ToListAsync();

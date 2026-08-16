@@ -182,11 +182,14 @@ namespace SASI.Servicios
             };
         }
 
-        public async Task<(bool Exito, object? Resultado, string? Error)> CrearAlumnoAsync(NuevoUsuarioApiRequest dto)
+        public const string CodigoEmailExistente = "EMAIL_EXISTE";
+        public const string CodigoAsignacionFallida = "ASIGNACION_FALLIDA";
+
+        public async Task<(bool Exito, object? Resultado, string? Error, string? Codigo)> CrearAlumnoAsync(NuevoUsuarioApiRequest dto)
         {
             var existe = await _userManager.FindByEmailAsync(dto.Email);
             if (existe != null)
-                return (false, null, "El correo ya existe");
+                return (false, null, "El correo ya existe", CodigoEmailExistente);
 
             var usuario = new ApplicationUser
             {
@@ -205,7 +208,7 @@ namespace SASI.Servicios
             var resultado = await _userManager.CreateAsync(usuario, contrasenaTemporal);
 
             if (!resultado.Succeeded)
-                return (false, null, string.Join("; ", resultado.Errors.Select(e => e.Description)));
+                return (false, null, string.Join("; ", resultado.Errors.Select(e => e.Description)), null);
 
             try
             {
@@ -222,12 +225,12 @@ namespace SASI.Servicios
                 await _usuarioSistemaServicio.AsignarUsuarioASistemaAsync(
                     asignacion.UsuarioId.ToString(), asignacion.SistemaId, asignacion.RolId, asignacion.EsPrincipal);
 
-                return (true, new { success = true, userId = usuario.Id, contrasenaTemporal }, null);
+                return (true, new { success = true, userId = usuario.Id, contrasenaTemporal }, null, null);
             }
             catch (Exception)
             {
                 await _userManager.DeleteAsync(usuario);
-                return (false, null, "Usuario creado pero falló la asignación al sistema. La operación fue revertida.");
+                return (false, null, "Usuario creado pero falló la asignación al sistema. La operación fue revertida.", CodigoAsignacionFallida);
             }
         }
 
@@ -240,18 +243,35 @@ namespace SASI.Servicios
                 return null;
 
             var user = await _userManager.FindByIdAsync(stored.UsuarioId.ToString());
-            if (user == null)
+            if (user == null || !user.Activo || await _userManager.IsLockedOutAsync(user))
                 return null;
 
             var sistemasYRoles = await _usuarioSistemaServicio.ObtenerSistemasYRolesDelUsuarioAsync(user.Id);
             var claims = await ConstruirClaimsAsync(user, sistemasYRoles);
 
             var token = GenerarAccessToken(claims, out var expires);
-            var nuevoRefreshToken = await GenerarYGuardarRefreshTokenAsync(user.Id);
+            var nuevoRefreshToken = GenerarTokenAleatorio();
+            var nuevoHash = CalcularHash(nuevoRefreshToken);
 
-            stored.RevokedUtc = DateTime.UtcNow;
-            stored.ReplacedByTokenHash = CalcularHash(nuevoRefreshToken);
+            // Revocación atómica: solo una rotación por token (impide doble uso concurrente).
+            var filasAfectadas = await _sasiDbContext.Database.ExecuteSqlRawAsync(
+                "UPDATE RefreshTokens SET RevokedUtc = GETUTCDATE(), ReplacedByTokenHash = @p0 WHERE TokenHash = @p1 AND RevokedUtc IS NULL",
+                nuevoHash, hash);
+
+            if (filasAfectadas == 0)
+                return null;
+
+            _sasiDbContext.RefreshTokens.Add(new RefreshToken
+            {
+                UsuarioId = user.Id,
+                TokenHash = nuevoHash,
+                ExpiresUtc = DateTime.UtcNow.AddDays(RefreshTokenDias()),
+                CreatedUtc = DateTime.UtcNow
+            });
+
             await _sasiDbContext.SaveChangesAsync();
+
+            await LimpiarTokensExpiradosAsync();
 
             return new { success = true, token, refreshToken = nuevoRefreshToken, expiration = expires };
         }
@@ -323,21 +343,32 @@ namespace SASI.Servicios
 
         private async Task<string> GenerarYGuardarRefreshTokenAsync(Guid usuarioId)
         {
-            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
-                .Replace('+', '-').Replace('/', '_').TrimEnd('=');
-
-            var dias = double.TryParse(_config["Jwt:RefreshTokenDays"], out var d) ? d : 30;
+            var token = GenerarTokenAleatorio();
 
             _sasiDbContext.RefreshTokens.Add(new RefreshToken
             {
                 UsuarioId = usuarioId,
                 TokenHash = CalcularHash(token),
-                ExpiresUtc = DateTime.UtcNow.AddDays(dias),
+                ExpiresUtc = DateTime.UtcNow.AddDays(RefreshTokenDias()),
                 CreatedUtc = DateTime.UtcNow
             });
 
             await _sasiDbContext.SaveChangesAsync();
             return token;
+        }
+
+        private static string GenerarTokenAleatorio()
+            => Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
+                .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+
+        private double RefreshTokenDias()
+            => double.TryParse(_config["Jwt:RefreshTokenDays"], out var d) ? d : 30;
+
+        private async Task LimpiarTokensExpiradosAsync()
+        {
+            await _sasiDbContext.RefreshTokens
+                .Where(rt => rt.ExpiresUtc < DateTime.UtcNow)
+                .ExecuteDeleteAsync();
         }
 
         private static string CalcularHash(string valor)

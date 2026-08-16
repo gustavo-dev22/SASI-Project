@@ -4,10 +4,15 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Caching.StackExchangeRedis;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SASI.Aplicacion.Servicios;
 using SASI.Authorization;
+using SASI.Caching;
 using SASI.Configuration;
 using SASI.Dominio.Repositories;
 using SASI.Filters;
@@ -23,11 +28,14 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configurar Serilog antes de construir la app
+Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "Logs"));
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .WriteTo.Console()
     .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
     .Destructure.With<PiiDestructuringPolicy>()
+    .Enrich.With<PiiLogEventEnricher>()
     .CreateLogger();
 
 // Nombre de la política
@@ -67,7 +75,6 @@ builder.Services.AddDbContext<IdentityDbContext>(options =>
             b.EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: TimeSpan.FromSeconds(5), errorNumbersToAdd: null);
         }));
 
-//builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<IUserContext, UserContext>();
@@ -209,11 +216,17 @@ var cacheProvider = builder.Configuration["Cache:Provider"] ?? "Memory";
 
 if (cacheProvider.Equals("Redis", StringComparison.OrdinalIgnoreCase))
 {
-    builder.Services.AddStackExchangeRedisCache(options =>
+    builder.Services.AddSingleton<IDistributedCache>(sp =>
     {
-        options.Configuration = builder.Configuration["Cache:Redis:Configuration"]
-            ?? builder.Configuration.GetConnectionString("Redis");
-        options.InstanceName = "SASI";
+        var logger = sp.GetRequiredService<ILogger<ResilientDistributedCache>>();
+        var primario = new RedisCache(Options.Create(new RedisCacheOptions
+        {
+            Configuration = builder.Configuration["Cache:Redis:Configuration"]
+                ?? builder.Configuration.GetConnectionString("Redis"),
+            InstanceName = "SASI"
+        }));
+        var respaldo = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        return new ResilientDistributedCache(primario, respaldo, logger);
     });
 }
 else

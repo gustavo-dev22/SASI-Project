@@ -80,7 +80,7 @@ namespace SASI.Infraestructura.Repositories
 
         public async Task<List<Sistema>> ListarAsync()
         {
-            return await _context.Sistemas.Include(s => s.Roles).OrderByDescending(s => s.FechaRegistro).ToListAsync();
+            return await _context.Sistemas.AsNoTracking().Include(s => s.Roles).OrderByDescending(s => s.FechaRegistro).ToListAsync();
         }
 
         public async Task<Sistema?> ObtenerPorId(int id)

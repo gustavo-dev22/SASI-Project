@@ -124,10 +124,10 @@ namespace SASI.Controllers.API
         {
             var resultado = await _autenticacionServicio.CrearAlumnoAsync(dto);
 
-            if (!resultado.Exito && resultado.Error == "El correo ya existe")
+            if (!resultado.Exito && resultado.Codigo == AutenticacionServicio.CodigoEmailExistente)
                 return Conflict(new { message = resultado.Error });
 
-            if (!resultado.Exito && resultado.Resultado == null)
+            if (!resultado.Exito)
                 return BadRequest(new { success = false, message = resultado.Error });
 
             return Ok(resultado.Resultado);

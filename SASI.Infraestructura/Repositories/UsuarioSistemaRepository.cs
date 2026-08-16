@@ -98,6 +98,7 @@ namespace SASI.Infraestructura.Repositories
         {
             // 1. Obtener asignaciones activas
             var asignaciones = await _context.UsuarioSistemas
+                .AsNoTracking()
                 .Where(us => us.SistemaId == sistemaId && us.Activo)
                 .ToListAsync();
 
@@ -106,6 +107,7 @@ namespace SASI.Infraestructura.Repositories
             // 2. Obtener únicamente los usuarios asignados (consulta en BD con IN)
             var usuarioIds = asignaciones.Select(a => a.UsuarioId).Distinct().ToList();
             var usuarios = await _userManager.Users
+                .AsNoTracking()
                 .Where(u => usuarioIds.Contains(u.Id))
                 .ToListAsync();
 
@@ -173,6 +175,7 @@ namespace SASI.Infraestructura.Repositories
                     join rol in _context.Roles on us.RolId equals rol.IdRol
                     where us.UsuarioId == userId
                     select new { us, sistema, rol })
+                .AsNoTracking()
                 .ToListAsync();
 
             if (!asignaciones.Any())
@@ -187,6 +190,7 @@ namespace SASI.Infraestructura.Repositories
                     where rolIds.Contains(ro.IdRol) && ro.Activo && obj.Activo
                     orderby obj.Orden
                     select new { ro.IdRol, Objeto = obj })
+                .AsNoTracking()
                 .ToListAsync();
 
             // 3. Componer el resultado en memoria
@@ -263,6 +267,7 @@ namespace SASI.Infraestructura.Repositories
         {
             // 1. Obtener asignaciones activas
             var asignaciones = await _context.UsuarioSistemas
+                .AsNoTracking()
                 .Where(us => us.SistemaId == sistemaId && us.Activo)
                 .ToListAsync();
 
@@ -274,6 +279,7 @@ namespace SASI.Infraestructura.Repositories
 
             // 2. Obtener usuarios (consulta en BD con IN)
             var usuarios = await _userManager.Users
+                .AsNoTracking()
                 .Where(u => usuarioIds.Contains(u.Id))
                 .ToListAsync();
 
@@ -313,6 +319,7 @@ namespace SASI.Infraestructura.Repositories
         {
             // 1️⃣ Obtener asignaciones activas del sistema
             var asignaciones = await _context.UsuarioSistemas
+                .AsNoTracking()
                 .Where(us => us.SistemaId == sistemaId && us.Activo)
                 .ToListAsync();
 
@@ -327,6 +334,7 @@ namespace SASI.Infraestructura.Repositories
 
             // 3️⃣ Obtener roles y filtrar por nombre
             var roles = await _context.Roles
+                .AsNoTracking()
                 .Where(r => rolIds.Contains(r.IdRol) && r.Nombre == nombreRol)
                 .ToListAsync();
 
@@ -347,6 +355,7 @@ namespace SASI.Infraestructura.Repositories
                 .ToList();
 
             var usuarios = await _userManager.Users
+                .AsNoTracking()
                 .Where(u => usuarioIds.Contains(u.Id))
                 .ToListAsync();
 

@@ -54,9 +54,11 @@ jobs:
 
       # Compila el proyecto web principal generando los binarios y el web.config
       - name: Publish SASI MVC
-        run: dotnet publish SASI/*.csproj -c Release -o ./publish-sasi
+        run: dotnet publish SASI/SASI.csproj -c Release -o ./publish-sasi
 
-      # Sube los binarios compilados a la raíz /wwwroot/
+      # Sube los binarios compilados a la raíz del sitio.
+      # NOTA: se excluye web.config para no sobrescribir el configurado manualmente
+      # en producción (ahí viven las variables de entorno: Jwt__Key, ConnectionStrings__DefaultConnection, etc.).
       - name: FTP Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -65,3 +67,5 @@ jobs:
           password: ${{ secrets.FTP_SASI_PASSWORD }}
           local-dir: ./publish-sasi/
           server-dir: /wwwroot/
+          exclude: |
+            **/web.config

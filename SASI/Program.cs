@@ -255,6 +255,16 @@ builder.Services.Configure<ConfiguracionSistemaSASI>(
 
 var app = builder.Build();
 
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var sasiDbContext = scope.ServiceProvider.GetRequiredService<SasiDbContext>();
+    await sasiDbContext.Database.MigrateAsync();
+
+    var identityDbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+    await identityDbContext.Database.MigrateAsync();
+}
+
 //using (var scope = app.Services.CreateScope())
 //{
 //    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();

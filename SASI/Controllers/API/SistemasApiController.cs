@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SASI.Aplicacion.Servicios;
+using SASI.Models.Requests;
 
 namespace SASI.Controllers.API
 {
@@ -99,12 +100,12 @@ namespace SASI.Controllers.API
             }
         }
 
-        [HttpGet("por-sistema-y-rol")]
-        public async Task<IActionResult> ObtenerUsuariosPorSistemaYRol([FromQuery] int sistemaId, [FromQuery] string rolNombre)
+        [HttpPost("por-sistema-y-rol")]
+        public async Task<IActionResult> ObtenerUsuariosPorSistemaYRol([FromBody] SistemaYRolRequest request)
         {
             try
             {
-                var usuarios = await _usuarioSistemaServicio.ObtenerUsuariosPorSistemaYRolAsync(sistemaId, rolNombre);
+                var usuarios = await _usuarioSistemaServicio.ObtenerUsuariosPorSistemaYRolAsync(request.SistemaId, request.RolNombre);
 
                 var lista = usuarios.ToList();
 

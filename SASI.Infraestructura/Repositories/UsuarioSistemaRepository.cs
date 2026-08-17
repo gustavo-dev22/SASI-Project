@@ -54,23 +54,28 @@ namespace SASI.Infraestructura.Repositories
                 }
             }
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            var nuevaAsignacion = new UsuarioSistema
+            return await strategy.ExecuteAsync(async () =>
             {
-                UsuarioId = usuarioGuid,
-                SistemaId = sistemaId,
-                RolId = rolId,
-                FechaAsignacion = DateTime.Now,
-                Activo = true,
-                EsPrincipal = esPrincipal
-            };
+                using var transaction = await _context.Database.BeginTransactionAsync();
 
-            _context.UsuarioSistemas.Add(nuevaAsignacion);
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
+                var nuevaAsignacion = new UsuarioSistema
+                {
+                    UsuarioId = usuarioGuid,
+                    SistemaId = sistemaId,
+                    RolId = rolId,
+                    FechaAsignacion = DateTime.Now,
+                    Activo = true,
+                    EsPrincipal = esPrincipal
+                };
 
-            return new ResultadoAsignacionUsuarioDto { Exito = true, Mensaje = "Asignación registrada correctamente." };
+                _context.UsuarioSistemas.Add(nuevaAsignacion);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return new ResultadoAsignacionUsuarioDto { Exito = true, Mensaje = "Asignación registrada correctamente." };
+            });
         }
 
         public async Task<List<SistemaAsignadoDto>> ObtenerSistemasPorUsuarioAsync(Guid usuarioId)

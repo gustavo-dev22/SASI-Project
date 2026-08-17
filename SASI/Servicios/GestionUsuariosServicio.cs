@@ -44,7 +44,17 @@ namespace SASI.Servicios
         {
             if (page < 1) page = 1;
 
-            var query = _userManager.Users.Where(u => u.NombreCompleto.StartsWith(filtro));
+            var query = _userManager.Users.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(filtro))
+            {
+                var terminos = filtro.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                foreach (var termino in terminos)
+                {
+                    query = query.Where(u => u.NombreCompleto.Contains(termino));
+                }
+            }
 
             var total = await query.CountAsync();
 

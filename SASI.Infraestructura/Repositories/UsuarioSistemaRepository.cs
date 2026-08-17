@@ -179,6 +179,9 @@ namespace SASI.Infraestructura.Repositories
                     join sistema in _context.Sistemas on us.SistemaId equals sistema.IdSistema
                     join rol in _context.Roles on us.RolId equals rol.IdRol
                     where us.UsuarioId == userId
+                          && us.Activo
+                          && sistema.Activo
+                          && rol.Activo
                     select new { us, sistema, rol })
                 .AsNoTracking()
                 .ToListAsync();

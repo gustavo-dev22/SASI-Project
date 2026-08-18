@@ -27,16 +27,18 @@ namespace SASI.Middleware
                 ? "default-src 'self'; " +
                   "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
                   "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
-                  "img-src 'self' data:; " +
+                  "img-src 'self' data: https://cdn.jsdelivr.net; " +
                   "font-src 'self' data: https://cdn.jsdelivr.net; " +
                   "connect-src 'self' https://cdn.jsdelivr.net; " +
+                  "worker-src 'self' blob:; " +
                   "frame-ancestors 'self'"
                 : "default-src 'self'; " +
                   "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net http://localhost:*; " +
                   "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net http://localhost:*; " +
-                  "img-src 'self' data:; " +
+                  "img-src 'self' data: https://cdn.jsdelivr.net; " +
                   "font-src 'self' data: https://cdn.jsdelivr.net; " +
                   "connect-src 'self' https://cdn.jsdelivr.net http://localhost:* ws://localhost:*; " +
+                  "worker-src 'self' blob:; " +
                   "frame-ancestors 'self'";
 
             await _next(context);

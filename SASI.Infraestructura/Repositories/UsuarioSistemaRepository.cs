@@ -45,7 +45,7 @@ namespace SASI.Infraestructura.Repositories
             if (esPrincipal)
             {
                 var asignaciones = await _context.UsuarioSistemas
-                    .Where(us => us.UsuarioId == usuarioGuid && us.EsPrincipal)
+                    .Where(us => us.UsuarioId == usuarioGuid && us.SistemaId == sistemaId && us.EsPrincipal)
                     .ToListAsync();
 
                 foreach (var asignacion in asignaciones)

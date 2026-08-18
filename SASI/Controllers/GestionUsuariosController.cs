@@ -40,6 +40,7 @@ namespace SASI.Controllers
         }
 
         [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> Obtener(string id)
         {
             var usuario = await _servicio.ObtenerAsync(id);
@@ -66,6 +67,7 @@ namespace SASI.Controllers
         }
 
         [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> ObtenerSistemas()
         {
             var sistemas = await _servicio.ObtenerSistemasAsync();
@@ -73,6 +75,7 @@ namespace SASI.Controllers
         }
 
         [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> ObtenerRolesPorSistema(int sistemaId)
         {
             var roles = await _servicio.ObtenerRolesPorSistemaAsync(sistemaId);
@@ -92,6 +95,7 @@ namespace SASI.Controllers
         }
 
         [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> ListarSistemasPorUsuario(Guid id)
         {
             var asignaciones = await _servicio.ObtenerSistemasPorUsuarioAsync(id);

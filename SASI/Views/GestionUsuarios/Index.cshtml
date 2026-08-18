@@ -560,19 +560,30 @@ ZUMH
             const sistemaId = $(this).data('sistema-id');
             const rolId = $(this).data('rol-id');
 
-            // Si deseas guardar automáticamente:
             $.ajax({
-                url: '/SASI/GestionUsuarios/ActualizarRolPrincipal', // tu endpoint real
+                url: '/SASI/GestionUsuarios/ActualizarRolPrincipal',
                 type: 'POST',
                 data: {
                     sistemaId: sistemaId,
-                    usuarioId: idUsuarioSeleccionado, // pásalo al cargar el modal
+                    usuarioId: idUsuarioSeleccionado,
                     rolPrincipalId: rolId
                 },
                 success: function (respuesta) {
+                    // Sincronizar el grupo: marcar solo el rol seleccionado
+                    $(`input.radio-principal[name='principal_${sistemaId}']`).each(function () {
+                        const activo = $(this).attr('disabled') !== 'disabled';
+                        if (String($(this).data('rol-id')) === String(rolId)) {
+                            $(this).prop('checked', true);
+                        } else if (activo) {
+                            $(this).prop('checked', false);
+                        }
+                    });
+
                     Swal.fire('Actualizado', respuesta.mensaje, 'success');
                 },
                 error: function () {
+                    // Revertir el estado visual al estado real de la BD
+                    verSistemas(idUsuarioSeleccionado);
                     Swal.fire('Error', 'No se pudo actualizar el rol principal', 'error');
                 }
             });

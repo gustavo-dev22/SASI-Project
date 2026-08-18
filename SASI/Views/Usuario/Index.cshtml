@@ -1,21 +1,23 @@
 ﻿@model UsuarioSistemaViewModel
 
 @{
-    ViewData["Title"] = "Gestión de Roles";
+    ViewData["Title"] = "Usuarios del Sistema";
 }
 
 <h2 class="mt-5">Gestión de Usuarios del Sistema: <b><u>@Model.NombreSistema</u></b></h2>
 
 <div class="d-flex justify-content-between align-items-center mb-3 mt-5">
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarUsuario">Agregar Usuario</button>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarUsuario">
+        <i class="bi bi-person-plus"></i> Agregar Usuario
+    </button>
 
     <a href="@Url.Action("Index", "Sistema")" class="btn btn-secondary mb-3">
         <i class="bi bi-arrow-left-circle"></i> Regresar
     </a>
 </div>
 
-<table class="table table-bordered">
-    <thead>
+<table class="table table-bordered table-hover align-middle text-center">
+    <thead class="table-header-custom">
         <tr>
             <th>#</th>
             <th>Correo</th>
@@ -26,64 +28,70 @@
         </tr>
     </thead>
     <tbody>
-        @for (int i = 0; i < Model.UsuariosAsignados.Count; i++)
+        @if (!Model.UsuariosAsignados.Any())
         {
-            var u = Model.UsuariosAsignados[i];
             <tr>
-                <td>@(i + 1)</td>
-                <td>@u.Email</td>
-                <td>@u.NombreCompleto</td>
-                <td>@u.Rol</td>
-                <td>@u.FechaAsignacion.ToString("dd/MM/yyyy")</td>
-                <td>
-                    <button class="btn btn-danger btn-sm" onclick="quitarUsuario('@u.UsuarioId.ToString()')"><i class="bi bi-trash"></i></button>
-                </td>
+                <td colspan="6" class="text-muted fst-italic">No hay usuarios asignados a este sistema.</td>
             </tr>
+        }
+        else
+        {
+            @for (int i = 0; i < Model.UsuariosAsignados.Count; i++)
+            {
+                var u = Model.UsuariosAsignados[i];
+                <tr>
+                    <td>@(i + 1)</td>
+                    <td>@u.Email</td>
+                    <td>@u.NombreCompleto</td>
+                    <td>@u.Rol</td>
+                    <td>@u.FechaAsignacion.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="quitarUsuario('@u.UsuarioId.ToString()')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            }
         }
     </tbody>
 </table>
 
-<!-- Modal agregar usuario -->
+<!-- Modal agregar usuario (asignar usuario existente al sistema) -->
 <div class="modal fade" id="modalAgregarUsuario" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form id="formNuevoUsuario">
+            <form id="formAsignarUsuario">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="modalLabel">Nuevo Usuario</h5>
+                    <h5 class="modal-title" id="modalLabel">Agregar Usuario al Sistema</h5>
                 </div>
                 <div class="modal-body">
-
-                    <input type="hidden" id="userId" name="Id" />
-
-                    <div class="mb-3">
-                        <label for="nombreCompleto" class="form-label">Nombre completo</label>
-                        <input type="text" class="form-control" id="nombreCompleto" name="NombreCompleto" style="text-transform:uppercase;">
-                    </div>
+                    <input type="hidden" id="sistemaId" value="@Model.SistemaId" />
 
                     <div class="mb-3">
-                        <label for="username" class="form-label">Nombre de usuario</label>
-                        <input type="text" class="form-control" id="username" name="UserName">
+                        <label for="usuarioSelect" class="form-label">Usuario</label>
+                        <select id="usuarioSelect" class="form-select" required>
+                            <option value="">Cargando usuarios...</option>
+                        </select>
                     </div>
 
                     <div class="mb-3">
-                        <label for="email" class="form-label">Correo electrónico</label>
-                        <input type="email" class="form-control" id="email" name="Email">
+                        <label for="rolSelect" class="form-label">Rol</label>
+                        <select id="rolSelect" class="form-select" required>
+                            <option value="">Seleccione un rol</option>
+                            @foreach (var rol in Model.RolesDisponibles)
+                            {
+                                <option value="@rol.Value">@rol.Text</option>
+                            }
+                        </select>
                     </div>
 
-                    <div id="camposEstado" style="display: none;">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="bloqueado" name="Bloqueado">
-                            <label class="form-check-label" for="bloqueado">Bloqueado</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="activo" name="Activo">
-                            <label class="form-check-label" for="activo">Activo</label>
-                        </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="esPrincipalCheck">
+                        <label class="form-check-label" for="esPrincipalCheck">¿Es principal?</label>
                     </div>
-
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Registrar</button>
+                    <button type="submit" class="btn btn-primary">Asignar</button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 </div>
             </form>
@@ -93,105 +101,162 @@
 
 @section Scripts {
 <script>
-
-    let modoEdicion = false;
-
     $(document).ready(function () {
-        $("#formNuevoUsuario").on("submit", function (e) {
+        const sistemaId = @Model.SistemaId;
+        const token = document.querySelector('meta[name="RequestVerificationToken"]')?.getAttribute('content') || '';
+
+        // Cargar usuarios disponibles al abrir el modal
+        $('#modalAgregarUsuario').on('show.bs.modal', function () {
+            const $select = $('#usuarioSelect');
+            $select.empty().append('<option value="">Cargando usuarios...</option>');
+            $select.prop('disabled', true);
+
+            fetch('@Url.Action("ObtenerUsuariosDisponibles", "Usuario")?sistemaId=' + sistemaId)
+                .then(r => r.json())
+                .then(data => {
+                    $select.empty();
+                    if (data.length === 0) {
+                        $select.append('<option value="">No hay usuarios disponibles</option>');
+                    } else {
+                        $select.append('<option value="">Seleccione un usuario</option>');
+                        data.forEach(u => {
+                            $select.append(`<option value="${u.id}">${u.nombreCompleto} (${u.email})</option>`);
+                        });
+                    }
+                    $select.prop('disabled', false);
+                })
+                .catch(() => {
+                    $select.empty().append('<option value="">Error al cargar usuarios</option>');
+                    $select.prop('disabled', false);
+                });
+        });
+
+        // Asignar usuario al sistema
+        $('#formAsignarUsuario').on('submit', function (e) {
             e.preventDefault();
 
-            const datos = {
-                Id: $("#userId").val(),
-                NombreCompleto: $("#nombreCompleto").val().trim().toUpperCase(),
-                UserName: $("#username").val().trim(),
-                Email: $("#email").val().trim(),
-                Bloqueado: $("#bloqueado").is(":checked"),
-                Activo: $("#activo").is(":checked")
-            };
+            const usuarioId = $('#usuarioSelect').val();
+            const rolId = $('#rolSelect').val();
+            const esPrincipal = $('#esPrincipalCheck').is(':checked');
 
-            if (!datos.NombreCompleto || !datos.UserName || !datos.Email) {
-                Swal.fire("Campos requeridos", "Complete todos los campos.", "warning");
+            if (!usuarioId || !rolId) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Campos requeridos',
+                    text: 'Seleccione un usuario y un rol.',
+                    confirmButtonText: 'Aceptar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
                 return;
             }
 
-            const url = modoEdicion
-                        ? '@Url.Action("Editar", "GestionUsuarios")'
-                        : '@Url.Action("Crear", "GestionUsuarios")';
+            Swal.fire({
+                title: '¿Desea asignar el usuario al sistema?',
+                text: 'Se registrará la asignación con el rol seleccionado.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, asignar',
+                cancelButtonText: 'Cancelar',
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then(result => {
+                if (!result.isConfirmed) return;
 
-            $.post(url, datos, function (response) {
-                Swal.fire({
-                    icon: response.success ? "success" : "error",
-                    title: response.message,
-                    confirmButtonText: "Aceptar",
-                    allowOutsideClick: false,
-                    allowEscapeKey: false
-                }).then((result) => {
-                    if (response.success && result.isConfirmed) {
-                        $("#modalAgregarUsuario").modal("hide");
-                        location.reload();
-                    }
-                });
-            }).fail(() => {
-                Swal.fire({
-                    icon: "error",
-                    title: "Error",
-                    text: "Ocurrió un error al registrar el usuario.",
-                    confirmButtonText: "Aceptar",
-                    allowOutsideClick: false,
-                    allowEscapeKey: false
+                const body = new URLSearchParams();
+                body.append('sistemaId', sistemaId);
+                body.append('usuarioId', usuarioId);
+                body.append('rolId', rolId);
+                body.append('esPrincipal', esPrincipal);
+
+                fetch('@Url.Action("AsignarUsuario", "Usuario")', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': token
+                    },
+                    body: body.toString()
+                })
+                .then(r => r.json())
+                .then(data => {
+                    Swal.fire({
+                        icon: data.success ? 'success' : 'error',
+                        title: data.message,
+                        confirmButtonText: 'Aceptar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    }).then(() => {
+                        if (data.success) {
+                            $('#modalAgregarUsuario').modal('hide');
+                            location.reload();
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.error(err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Ocurrió un error al asignar el usuario.',
+                        confirmButtonText: 'Aceptar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
                 });
             });
         });
 
-        // Resetear modal al cerrarse
-        $('#modalAgregarUsuario').on('hidden.bs.modal', function () {
-            modoEdicion = false;
-            $("#modalLabel").text("Nuevo Usuario");
-            $("#formNuevoUsuario button[type=submit]").text("Registrar");
-            $("#formNuevoUsuario")[0].reset();
-            $("#camposEstado").hide();
-        });
-    });
-
-    const sistemaId = @Model.SistemaId;
-
-    function quitarUsuario(idUsuario) {
+        // Quitar usuario del sistema
+        window.quitarUsuario = function (usuarioId) {
             Swal.fire({
-            title: '¿Está seguro?',
-            text: '¿Desea quitar este usuario del sistema?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Sí, quitar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
+                title: '¿Está seguro?',
+                text: '¿Desea quitar este usuario del sistema?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, quitar',
+                cancelButtonText: 'Cancelar',
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                const body = new URLSearchParams();
+                body.append('sistemaId', sistemaId);
+                body.append('usuarioId', usuarioId);
+
                 fetch('@Url.Action("QuitarUsuarioDeSistema", "Usuario")', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sistemaId: parseInt('@Model.SistemaId'),
-                        usuarioId: idUsuario
-                    })
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'RequestVerificationToken': token
+                    },
+                    body: body.toString()
                 })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Eliminado',
-                            text: data.message,
-                            confirmButtonText: 'OK'
-                        }).then(() => location.reload());
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: data.message
-                        });
-                    }
+                    Swal.fire({
+                        icon: data.success ? 'success' : 'error',
+                        title: data.message,
+                        confirmButtonText: 'Aceptar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    }).then(() => {
+                        if (data.success) location.reload();
+                    });
+                })
+                .catch(err => {
+                    console.error(err);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo quitar el usuario del sistema.',
+                        confirmButtonText: 'Aceptar',
+                        allowOutsideClick: false,
+                        allowEscapeKey: false
+                    });
                 });
-            }
-        });
-    }
+            });
+        };
+    });
 </script>
 }

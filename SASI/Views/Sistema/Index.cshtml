@@ -116,6 +116,14 @@
                             onclick="mostrarUsuarios(@sistema.IdSistema)">
                         <i class="bi bi-person-lines-fill"></i>
                     </button>
+
+                    <a href="@Url.Action("Index", "Usuario", new { sistemaId = sistema.IdSistema })"
+                       class="btn btn-sm btn-outline-dark me-1"
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="top"
+                       title="Gestionar Usuarios">
+                        <i class="bi bi-people-fill"></i>
+                    </a>
                 </td>
             </tr>
             index++;

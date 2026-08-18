@@ -1,10 +1,15 @@
-﻿@model UsuarioSistemaViewModel
+﻿@using X.PagedList
+@using X.PagedList.Mvc.Core
+
+@model UsuarioSistemaViewModel
 
 @{
     ViewData["Title"] = "Usuarios del Sistema";
 }
 
-<h2 class="mt-5">Gestión de Usuarios del Sistema: <b><u>@Model.NombreSistema</u></b></h2>
+<h2 class="mt-5">Gestión de Usuarios del Sistema: <b><u>@Model.NombreSistema</u></b>
+    <span class="text-muted fs-5">(@Model.UsuariosAsignados.TotalItemCount)</span>
+</h2>
 
 <div class="d-flex justify-content-between align-items-center mb-3 mt-5">
     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregarUsuario">
@@ -23,6 +28,7 @@
             <th>Correo</th>
             <th>Nombre</th>
             <th>Rol</th>
+            <th>Principal</th>
             <th>Fecha Asignación</th>
             <th>Acción</th>
         </tr>
@@ -31,7 +37,7 @@
         @if (!Model.UsuariosAsignados.Any())
         {
             <tr>
-                <td colspan="6" class="text-muted fst-italic">No hay usuarios asignados a este sistema.</td>
+                <td colspan="7" class="text-muted fst-italic">No hay usuarios asignados a este sistema.</td>
             </tr>
         }
         else
@@ -40,13 +46,24 @@
             {
                 var u = Model.UsuariosAsignados[i];
                 <tr>
-                    <td>@(i + 1)</td>
+                    <td>@(((Model.UsuariosAsignados.PageNumber - 1) * Model.UsuariosAsignados.PageSize) + i + 1)</td>
                     <td>@u.Email</td>
                     <td>@u.NombreCompleto</td>
                     <td>@u.Rol</td>
+                    <td>
+                        @if (u.EsPrincipal)
+                        {
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Principal</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
                     <td>@u.FechaAsignacion.ToString("dd/MM/yyyy")</td>
                     <td>
-                        <button class="btn btn-danger btn-sm" onclick="quitarUsuario('@u.UsuarioId.ToString()')">
+                        <button class="btn btn-danger btn-sm" title="Quitar relación usuario-rol"
+                                onclick="quitarUsuario('@u.UsuarioId.ToString()', @u.RolId, @u.EsPrincipal.ToString().ToLower())">
                             <i class="bi bi-trash"></i>
                         </button>
                     </td>
@@ -55,6 +72,20 @@
         }
     </tbody>
 </table>
+
+<div class="d-flex justify-content-center mt-3">
+    @Html.PagedListPager(Model.UsuariosAsignados, page => Url.Action("Index", new { sistemaId = Model.SistemaId, page }),
+        new PagedListRenderOptions
+        {
+            DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+            DisplayLinkToLastPage = PagedListDisplayMode.Always,
+            DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+            DisplayLinkToNextPage = PagedListDisplayMode.Always,
+            UlElementClasses = new[] { "pagination" },
+            LiElementClasses = new[] { "page-item" },
+            PageClasses = new[] { "page-link" }
+        })
+</div>
 
 <!-- Modal agregar usuario (asignar usuario existente al sistema) -->
 <div class="modal fade" id="modalAgregarUsuario" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
@@ -206,11 +237,23 @@
             });
         });
 
-        // Quitar usuario del sistema
-        window.quitarUsuario = function (usuarioId) {
+        // Quitar relación usuario-rol del sistema
+        window.quitarUsuario = function (usuarioId, rolId, esPrincipal) {
+            if (esPrincipal) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Rol principal',
+                    text: 'No se puede quitar el rol principal. Asigne otro rol principal antes de quitar esta relación.',
+                    confirmButtonText: 'Aceptar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                });
+                return;
+            }
+
             Swal.fire({
                 title: '¿Está seguro?',
-                text: '¿Desea quitar este usuario del sistema?',
+                text: '¿Desea quitar esta relación usuario-rol del sistema?',
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Sí, quitar',
@@ -223,6 +266,7 @@
                 const body = new URLSearchParams();
                 body.append('sistemaId', sistemaId);
                 body.append('usuarioId', usuarioId);
+                body.append('rolId', rolId);
 
                 fetch('@Url.Action("QuitarUsuarioDeSistema", "Usuario")', {
                     method: 'POST',
@@ -249,7 +293,7 @@
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: 'No se pudo quitar el usuario del sistema.',
+                        text: 'No se pudo quitar la relación usuario-rol.',
                         confirmButtonText: 'Aceptar',
                         allowOutsideClick: false,
                         allowEscapeKey: false

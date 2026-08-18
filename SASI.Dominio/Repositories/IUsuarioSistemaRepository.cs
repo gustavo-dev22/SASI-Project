@@ -13,6 +13,7 @@ namespace SASI.Dominio.Repositories
         Task<List<UsuarioAsignadoDto>> ObtenerUsuariosPorSistemaAsync(int sistemaId);
         Task<ResultadoAsignacionUsuarioDto> AsignarUsuarioASistemaAsync(string email, int sistemaId, int rolId, bool esPrincipal);
         Task<bool> QuitarUsuarioDeSistemaAsync(Guid usuarioId, int sistemaId);
+        Task<ResultadoCambioEstadoDto> QuitarRolUsuarioDeSistemaAsync(Guid usuarioId, int sistemaId, int rolId);
         Task<List<SistemaAsignadoDto>> ObtenerSistemasPorUsuarioAsync(Guid usuarioId);
         Task<ResultadoCambioEstadoDto> ActualizarEstadoSistemaAsync(Guid usuarioId, int sistemaId, int rolId, bool nuevoEstado);
         Task<List<UsuarioSistemaRolDto>> ObtenerSistemasYRolesDelUsuarioAsync(Guid userId);

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using SASI.Aplicacion.Servicios;
 using SASI.Infraestructura.Identity;
 using SASI.Models;
+using X.PagedList.Extensions;
 
 namespace SASI.Controllers
 {
@@ -30,20 +31,26 @@ namespace SASI.Controllers
 
         [HttpGet]
         [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-        public async Task<IActionResult> Index(int sistemaId)
+        public async Task<IActionResult> Index(int sistemaId, int page = 1)
         {
+            const int pageSize = 10;
+
             var sistema = await _sistemaServicio.ObtenerPorIdAsync(sistemaId);
             if (sistema == null) return NotFound();
 
             var usuarios = await _usuarioSistemaServicio.ObtenerUsuariosPorSistemaAsync(sistemaId);
             var roles = await _rolServicio.ObtenerRolesComoSelectListAsync(sistema.IdSistema);
 
+            var pagedUsuarios = usuarios
+                .OrderBy(u => u.NombreCompleto)
+                .ToPagedList(page < 1 ? 1 : page, pageSize);
+
             var vm = new UsuarioSistemaViewModel
             {
                 SistemaId = sistema.IdSistema,
                 CodigoSistema = sistema.Codigo,
                 NombreSistema = sistema.Nombre,
-                UsuariosAsignados = usuarios,
+                UsuariosAsignados = pagedUsuarios,
                 RolesDisponibles = roles
             };
 
@@ -79,16 +86,14 @@ namespace SASI.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> QuitarUsuarioDeSistema(Guid usuarioId, int sistemaId)
+        public async Task<IActionResult> QuitarUsuarioDeSistema(Guid usuarioId, int sistemaId, int rolId)
         {
-            var exito = await _usuarioSistemaServicio.QuitarUsuarioDeSistemaAsync(usuarioId, sistemaId);
+            var resultado = await _usuarioSistemaServicio.QuitarRolUsuarioDeSistemaAsync(usuarioId, sistemaId, rolId);
 
             return Json(new
             {
-                success = exito,
-                message = exito
-                    ? "Usuario quitado del sistema correctamente."
-                    : "No se pudo quitar el usuario del sistema."
+                success = resultado.Exito,
+                message = resultado.Mensaje
             });
         }
     }

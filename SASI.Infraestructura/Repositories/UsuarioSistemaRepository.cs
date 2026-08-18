@@ -133,8 +133,10 @@ namespace SASI.Infraestructura.Repositories
                     Email = user?.Email ?? "",
                     UserName = user?.UserName ?? "",
                     NombreCompleto = user?.NombreCompleto ?? "",
+                    RolId = asig.RolId,
                     Rol = rol?.Nombre ?? "",
-                    FechaAsignacion = asig.FechaAsignacion
+                    FechaAsignacion = asig.FechaAsignacion,
+                    EsPrincipal = asig.EsPrincipal
                 };
             }).ToList();
 
@@ -143,15 +145,37 @@ namespace SASI.Infraestructura.Repositories
 
         public async Task<bool> QuitarUsuarioDeSistemaAsync(Guid usuarioId, int sistemaId)
         {
+            var asignaciones = await _context.UsuarioSistemas
+                                    .Where(x => x.UsuarioId == usuarioId && x.SistemaId == sistemaId && x.Activo)
+                                    .ToListAsync();
+
+            if (asignaciones.Count == 0)
+                return false;
+
+            foreach (var asignacion in asignaciones)
+            {
+                asignacion.Activo = false;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<ResultadoCambioEstadoDto> QuitarRolUsuarioDeSistemaAsync(Guid usuarioId, int sistemaId, int rolId)
+        {
             var asignacion = await _context.UsuarioSistemas
-                                    .FirstOrDefaultAsync(x => x.UsuarioId == usuarioId && x.SistemaId == sistemaId && x.Activo);
+                .FirstOrDefaultAsync(x => x.UsuarioId == usuarioId && x.SistemaId == sistemaId && x.RolId == rolId);
 
             if (asignacion == null)
-                return false;
+                return ResultadoCambioEstadoDto.Error("No se encontró la asignación del rol al usuario en el sistema.");
+
+            // Validar que no sea el rol principal antes de quitar la relación
+            if (asignacion.EsPrincipal)
+                return ResultadoCambioEstadoDto.Error("No se puede quitar el rol principal. Asigne otro rol principal antes de quitar esta relación.");
 
             asignacion.Activo = false;
             await _context.SaveChangesAsync();
-            return true;
+            return ResultadoCambioEstadoDto.Ok("Relación usuario-rol quitada correctamente.");
         }
 
         public async Task<ResultadoCambioEstadoDto> ActualizarEstadoSistemaAsync(Guid usuarioId, int sistemaId, int rolId, bool nuevoEstado)

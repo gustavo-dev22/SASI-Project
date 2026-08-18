@@ -11,6 +11,7 @@ namespace SASI.Aplicacion.Servicios
         Task<List<UsuarioAsignadoDto>> ObtenerUsuariosPorSistemaYRolAsync(int sistemaId, string nombreRol);
         Task<ResultadoAsignacionUsuarioDto> AsignarUsuarioASistemaAsync(string usuarioId, int sistemaId, int rolId, bool esPrincipal);
         Task<bool> QuitarUsuarioDeSistemaAsync(Guid usuarioId, int sistemaId);
+        Task<ResultadoCambioEstadoDto> QuitarRolUsuarioDeSistemaAsync(Guid usuarioId, int sistemaId, int rolId);
         Task<ResultadoCambioEstadoDto> ActualizarEstadoSistemaAsync(Guid usuarioId, int sistemaId, int rolId, bool nuevoEstado);
         Task<List<SistemaAsignadoDto>> ObtenerSistemasPorUsuarioAsync(Guid usuarioId);
         Task ActualizarRolPrincipalAsync(Guid usuarioId, int idSistema, int nuevoRolPrincipalId);
@@ -43,6 +44,9 @@ namespace SASI.Aplicacion.Servicios
 
         public Task<bool> QuitarUsuarioDeSistemaAsync(Guid usuarioId, int sistemaId)
             => _usuarioSistemaRepository.QuitarUsuarioDeSistemaAsync(usuarioId, sistemaId);
+
+        public Task<ResultadoCambioEstadoDto> QuitarRolUsuarioDeSistemaAsync(Guid usuarioId, int sistemaId, int rolId)
+            => _usuarioSistemaRepository.QuitarRolUsuarioDeSistemaAsync(usuarioId, sistemaId, rolId);
 
         public Task<ResultadoCambioEstadoDto> ActualizarEstadoSistemaAsync(Guid usuarioId, int sistemaId, int rolId, bool nuevoEstado)
             => _usuarioSistemaRepository.ActualizarEstadoSistemaAsync(usuarioId, sistemaId, rolId, nuevoEstado);

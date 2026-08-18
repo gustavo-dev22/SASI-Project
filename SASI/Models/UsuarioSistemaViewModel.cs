@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc.Rendering;
 using SASI.Dominio.DTO;
+using X.PagedList;
 
 namespace SASI.Models
 {
@@ -9,7 +10,7 @@ namespace SASI.Models
         public string CodigoSistema { get; set; } = string.Empty;
         public string NombreSistema { get; set; } = string.Empty;
 
-        public List<UsuarioAsignadoDto> UsuariosAsignados { get; set; } = default!;
+        public IPagedList<UsuarioAsignadoDto> UsuariosAsignados { get; set; } = default!;
         public List<SelectListItem> RolesDisponibles { get; set; } = default!;
     }
 }

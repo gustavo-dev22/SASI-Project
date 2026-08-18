@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using SASI.Dominio.Modelo.Commons;
 using System;
 using System.Collections.Generic;
@@ -16,6 +17,7 @@ namespace SASI.Dominio.Modelo
         public bool Activo { get; set; } = true;
 
         [ForeignKey("IdSistema")]
+        [ValidateNever]
         public Sistema Sistema { get; set; } = default!;
     }
 }

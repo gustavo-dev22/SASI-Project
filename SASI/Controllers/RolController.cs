@@ -54,7 +54,11 @@ namespace SASI.Controllers
         public async Task<IActionResult> Crear(Rol rol)
         {
             if (!ModelState.IsValid)
-                return PartialView("_CrearRolPartial", rol);
+                return BadRequest(new
+                {
+                    success = false,
+                    mensaje = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage))
+                });
 
             await _rolServicio.CrearAsync(rol);
             return Json(new { success = true });
@@ -81,7 +85,11 @@ namespace SASI.Controllers
         public async Task<IActionResult> Editar(Rol rol)
         {
             if (!ModelState.IsValid)
-                return PartialView("_CrearRolPartial", rol);
+                return BadRequest(new
+                {
+                    success = false,
+                    mensaje = string.Join(" | ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage))
+                });
 
             await _rolServicio.EditarAsync(rol);
             return Json(new { success = true });

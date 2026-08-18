@@ -170,7 +170,27 @@
                                                 mensajeExito: 'El rol fue guardado correctamente.',
                                                 callbackFinal: () => location.reload()
                                             });
+                                        } else {
+                                            Swal.fire({
+                                                icon: 'error',
+                                                title: 'No se pudo registrar el rol',
+                                                text: data.mensaje || 'Ocurrió un error al guardar el rol.',
+                                                confirmButtonText: 'Aceptar',
+                                                allowOutsideClick: false,
+                                                allowEscapeKey: false
+                                            });
                                         }
+                                    })
+                                    .catch(err => {
+                                        console.error(err);
+                                        Swal.fire({
+                                            icon: 'error',
+                                            title: 'Error del servidor',
+                                            text: 'Ocurrió un error inesperado al guardar el rol.',
+                                            confirmButtonText: 'Aceptar',
+                                            allowOutsideClick: false,
+                                            allowEscapeKey: false
+                                        });
                                     });
                                 }
                             });
@@ -291,7 +311,27 @@
                                                     mensajeExito: 'Los cambios fueron actualizados correctamente.',
                                                     callbackFinal: () => location.reload()
                                                 });
+                                            } else {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'No se pudo actualizar el rol',
+                                                    text: data.mensaje || 'Ocurrió un error al guardar los cambios.',
+                                                    confirmButtonText: 'Aceptar',
+                                                    allowOutsideClick: false,
+                                                    allowEscapeKey: false
+                                                });
                                             }
+                                        })
+                                        .catch(err => {
+                                            console.error(err);
+                                            Swal.fire({
+                                                icon: 'error',
+                                                title: 'Error del servidor',
+                                                text: 'Ocurrió un error inesperado al actualizar el rol.',
+                                                confirmButtonText: 'Aceptar',
+                                                allowOutsideClick: false,
+                                                allowEscapeKey: false
+                                            });
                                         });
                                     }
                                 });

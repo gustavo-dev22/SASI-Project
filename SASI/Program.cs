@@ -92,12 +92,14 @@ builder.Services.AddTransient<IRolObjetoRepository, RolObjetoRepository>();
 builder.Services.AddTransient<IUsuarioSistemaRepository, UsuarioSistemaRepository>();
 builder.Services.AddTransient<ICorrelativoRepository, CorrelativoRepository>();
 builder.Services.AddTransient<IOficinaRepository, OficinaRepository>();
+builder.Services.AddTransient<IGobernanzaRepository, GobernanzaRepository>();
 
 builder.Services.AddScoped<ISistemaServicio, SistemaServicio>();
 builder.Services.AddScoped<IRolServicio, RolServicio>();
 builder.Services.AddScoped<IOficinaServicio, OficinaServicio>();
 builder.Services.AddScoped<IObjetoServicio, ObjetoServicio>();
 builder.Services.AddScoped<IUsuarioSistemaServicio, UsuarioSistemaServicio>();
+builder.Services.AddScoped<ISistemaGobernanzaServicio, SistemaGobernanzaServicio>();
 
 builder.Services.AddScoped<CuentaServicio>();
 builder.Services.AddScoped<AutenticacionServicio>();

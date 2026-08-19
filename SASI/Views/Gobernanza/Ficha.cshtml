@@ -1,0 +1,554 @@
+@using SASI.Dominio.DTO
+
+@{
+    ViewData["Title"] = "Gobernanza del Sistema";
+
+    var sistema = ViewBag.Sistema as SASI.Dominio.Modelo.Sistema;
+    var sistemaId = (int)ViewBag.SistemaId;
+    var versiones = ViewBag.Versiones as List<SistemaVersionDto> ?? new List<SistemaVersionDto>();
+    var contratos = ViewBag.Contratos as List<SistemaContratoDto> ?? new List<SistemaContratoDto>();
+    var continuidad = ViewBag.Continuidad as ContinuidadDto ?? new ContinuidadDto { SistemaId = sistemaId };
+    var documentos = ViewBag.Documentos as List<SistemaDocumentoDto> ?? new List<SistemaDocumentoDto>();
+}
+
+<h2 class="mt-5">
+    Gobernanza del Sistema: <b><u>@sistema?.Nombre</u></b>
+    <span class="text-muted fs-5">(@sistema?.Codigo)</span>
+</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-4 mt-4">
+    <span>
+        <span class="badge bg-@(sistema?.EstadoCicloVida switch { SASI.Dominio.Modelo.EstadoCicloVida.EnProduccion => "success", SASI.Dominio.Modelo.EstadoCicloVida.Mantenimiento => "warning", SASI.Dominio.Modelo.EstadoCicloVida.EnRetiro => "secondary", _ => "info" })">
+            @(sistema?.EstadoCicloVida.ToString())
+        </span>
+        @if (!string.IsNullOrEmpty(sistema?.VersionActual))
+        {
+            <span class="badge bg-dark ms-1">v@sistema.VersionActual</span>
+        }
+    </span>
+    <a href="@Url.Action("Index", "Sistema")" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left-circle"></i> Regresar
+    </a>
+</div>
+
+<ul class="nav nav-tabs" id="gobernanzaTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-ficha-tab" data-bs-toggle="tab" data-bs-target="#tab-ficha" type="button" role="tab">
+            <i class="bi bi-info-circle-fill"></i> Ficha ampliada
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-versiones-tab" data-bs-toggle="tab" data-bs-target="#tab-versiones" type="button" role="tab">
+            <i class="bi bi-tags-fill"></i> Versiones <span class="badge bg-secondary ms-1">@versiones.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-contratos-tab" data-bs-toggle="tab" data-bs-target="#tab-contratos" type="button" role="tab">
+            <i class="bi bi-file-earmark-text-fill"></i> Contratos <span class="badge bg-secondary ms-1">@contratos.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-continuidad-tab" data-bs-toggle="tab" data-bs-target="#tab-continuidad" type="button" role="tab">
+            <i class="bi bi-shield-check"></i> Continuidad
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-documentos-tab" data-bs-toggle="tab" data-bs-target="#tab-documentos" type="button" role="tab">
+            <i class="bi bi-folder-fill"></i> Documentos <span class="badge bg-secondary ms-1">@documentos.Count</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content border border-top-0 rounded-bottom p-4 bg-white" id="gobernanzaTabContent">
+
+    @* ---------- Ficha ampliada ---------- *@
+    <div class="tab-pane fade show active" id="tab-ficha" role="tabpanel">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-light fw-bold"><i class="bi bi-people-fill"></i> Responsables</div>
+                    <div class="card-body">
+                        <p class="mb-1"><strong>Responsable funcional:</strong> @(string.IsNullOrEmpty(sistema?.ResponsableFuncional) ? "—" : sistema.ResponsableFuncional)</p>
+                        <p class="mb-1"><strong>Responsable técnico:</strong> @(string.IsNullOrEmpty(sistema?.ResponsableTecnico) ? "—" : sistema.ResponsableTecnico)</p>
+                        <p class="mb-0"><strong>Área dueña:</strong> @(sistema?.AreaDuena?.Nombre ?? "—")</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-light fw-bold"><i class="bi bi-diagram-3-fill"></i> Ciclo de vida</div>
+                    <div class="card-body">
+                        <p class="mb-1"><strong>Fecha puesta en producción:</strong> @(sistema?.FechaPuestaProduccion?.ToString("dd/MM/yyyy") ?? "—")</p>
+                        <p class="mb-1"><strong>Versión actual:</strong> @(string.IsNullOrEmpty(sistema?.VersionActual) ? "—" : "v" + sistema.VersionActual)</p>
+                        <p class="mb-0"><strong>Estado:</strong> @(sistema?.EstadoCicloVida.ToString())</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ---------- Versiones ---------- *@
+    <div class="tab-pane fade" id="tab-versiones" role="tabpanel">
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-primary btn-sm" onclick="abrirModalVersion(0)">
+                <i class="bi bi-plus-lg"></i> Nueva versión
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle text-center">
+                <thead class="table-header-custom">
+                    <tr>
+                        <th>Versión</th>
+                        <th>Entorno</th>
+                        <th>Fecha despliegue</th>
+                        <th>Usuario</th>
+                        <th>Changelog</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaVersiones">
+                    @if (!versiones.Any())
+                    {
+                        <tr><td colspan="6" class="text-muted">No hay versiones registradas.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var v in versiones)
+                        {
+                            <tr>
+                                <td class="fw-bold">@v.Version</td>
+                                <td>@(v.Entorno ?? "—")</td>
+                                <td>@(v.FechaDespliegue?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                <td>@(v.UsuarioDespliegue ?? "—")</td>
+                                <td class="text-start text-truncate" style="max-width:220px" title="@v.Changelog">@(v.Changelog ?? "—")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-warning" title="Editar" onclick="abrirModalVersion(@v.IdSistemaVersion)"><i class="bi bi-pencil"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="eliminarVersion(@v.IdSistemaVersion)"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @* ---------- Contratos ---------- *@
+    <div class="tab-pane fade" id="tab-contratos" role="tabpanel">
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-primary btn-sm" onclick="abrirModalContrato(0)">
+                <i class="bi bi-plus-lg"></i> Nuevo contrato
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle text-center">
+                <thead class="table-header-custom">
+                    <tr>
+                        <th>Proveedor</th>
+                        <th>N° Contrato</th>
+                        <th>Vigencia</th>
+                        <th>Costo anual</th>
+                        <th>SLA</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaContratos">
+                    @if (!contratos.Any())
+                    {
+                        <tr><td colspan="7" class="text-muted">No hay contratos registrados.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var c in contratos)
+                        {
+                            <tr>
+                                <td>@(c.Proveedor ?? "—")</td>
+                                <td>@(c.NroContrato ?? "—")</td>
+                                <td>@(c.FechaInicio?.ToString("dd/MM/yyyy") ?? "?") — @(c.FechaFin?.ToString("dd/MM/yyyy") ?? "Indefinida")</td>
+                                <td>@(c.CostoAnual.HasValue ? c.CostoAnual.Value.ToString("C0", new System.Globalization.CultureInfo("es-PE")) : "—")</td>
+                                <td class="text-start text-truncate" style="max-width:180px" title="@c.SLA_Detalle">@(c.SLA_Detalle ?? "—")</td>
+                                <td>
+                                    @if (c.EstadoContrato == "Vigente")
+                                    {
+                                        <span class="badge bg-success">Vigente</span>
+                                    }
+                                    else if (c.EstadoContrato == "Por vencer")
+                                    {
+                                        <span class="badge bg-warning text-dark">Por vencer (@c.DiasParaVencer días)</span>
+                                    }
+                                    else if (c.EstadoContrato == "Vencido")
+                                    {
+                                        <span class="badge bg-danger">Vencido</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Sin fecha fin</span>
+                                    }
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-warning" title="Editar" onclick="abrirModalContrato(@c.IdSistemaContrato)"><i class="bi bi-pencil"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="eliminarContrato(@c.IdSistemaContrato)"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @* ---------- Continuidad ---------- *@
+    <div class="tab-pane fade" id="tab-continuidad" role="tabpanel">
+        <form id="formContinuidad">
+            <input type="hidden" name="SistemaId" value="@sistemaId" />
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">RPO (horas)</label>
+                    <input type="number" name="RpoHoras" class="form-control" min="1" max="8760" value="@continuidad.RpoHoras" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">RTO (horas)</label>
+                    <input type="number" name="RtoHoras" class="form-control" min="1" max="8760" value="@continuidad.RtoHoras" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Fecha última prueba de restauración</label>
+                    <input type="date" name="FechaUltimaPruebaRestauracion" class="form-control"
+                           value="@(continuidad.FechaUltimaPruebaRestauracion?.ToString("yyyy-MM-dd"))" />
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <label class="form-label">Política de respaldo</label>
+                    <textarea name="PoliticaRespaldo" class="form-control" rows="2" maxlength="500">@continuidad.PoliticaRespaldo</textarea>
+                </div>
+            </div>
+            <div class="mt-3 text-end">
+                <button type="submit" class="btn btn-success"><i class="bi bi-save"></i> Guardar continuidad</button>
+            </div>
+        </form>
+
+        @if (continuidad.DiasDesdeUltimaPrueba.HasValue)
+        {
+            var dias = continuidad.DiasDesdeUltimaPrueba.Value;
+            <div class="alert @(dias > 180 ? "alert-danger" : dias > 90 ? "alert-warning" : "alert-success") mt-3">
+                <i class="bi bi-clock-history"></i>
+                Última prueba de restauración hace <strong>@dias días</strong>.
+            </div>
+        }
+    </div>
+
+    @* ---------- Documentos ---------- *@
+    <div class="tab-pane fade" id="tab-documentos" role="tabpanel">
+        <div class="d-flex justify-content-end mb-3">
+            <button class="btn btn-primary btn-sm" onclick="abrirModalDocumento()">
+                <i class="bi bi-plus-lg"></i> Subir documento
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle text-center">
+                <thead class="table-header-custom">
+                    <tr>
+                        <th>Título</th>
+                        <th>Tipo</th>
+                        <th>Fecha</th>
+                        <th>Usuario</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaDocumentos">
+                    @if (!documentos.Any())
+                    {
+                        <tr><td colspan="5" class="text-muted">No hay documentos registrados.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var d in documentos)
+                        {
+                            <tr>
+                                <td class="text-start">
+                                    @if (!string.IsNullOrEmpty(d.RutaArchivo))
+                                    {
+                                        <a href="~/@d.RutaArchivo" target="_blank"><i class="bi bi-file-earmark-arrow-down"></i> @d.Titulo</a>
+                                    }
+                                    else
+                                    {
+                                        @d.Titulo
+                                    }
+                                </td>
+                                <td><span class="badge bg-info text-dark">@d.TipoDoc</span></td>
+                                <td>@d.FechaSubida.ToString("dd/MM/yyyy")</td>
+                                <td>@(d.UsuarioSubida ?? "—")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="eliminarDocumento(@d.IdSistemaDocumento)"><i class="bi bi-trash"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+@* ===================== MODALES ===================== *@
+
+<div class="modal fade" id="modalVersion" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formVersion">
+                <div class="modal-header"><h5 class="modal-title" id="modalVersionTitle">Nueva versión</h5></div>
+                <div class="modal-body">
+                    <input type="hidden" name="IdSistemaVersion" id="versionId" value="0" />
+                    <input type="hidden" name="SistemaId" value="@sistemaId" />
+                    <div class="mb-3">
+                        <label class="form-label">Versión</label>
+                        <input type="text" name="Version" id="versionNombre" class="form-control" maxlength="50" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Entorno</label>
+                        <select name="Entorno" id="versionEntorno" class="form-select">
+                            <option value="">Seleccione</option>
+                            <option>Desarrollo</option>
+                            <option>QA</option>
+                            <option>Producción</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha despliegue</label>
+                        <input type="date" name="FechaDespliegue" id="versionFecha" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Changelog</label>
+                        <textarea name="Changelog" id="versionChangelog" class="form-control" rows="3" maxlength="4000"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalContrato" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="formContrato">
+                <div class="modal-header"><h5 class="modal-title" id="modalContratoTitle">Nuevo contrato</h5></div>
+                <div class="modal-body">
+                    <input type="hidden" name="IdSistemaContrato" id="contratoId" value="0" />
+                    <input type="hidden" name="SistemaId" value="@sistemaId" />
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Proveedor</label>
+                            <input type="text" name="Proveedor" id="contratoProveedor" class="form-control" maxlength="200" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">N° Contrato</label>
+                            <input type="text" name="NroContrato" id="contratoNro" class="form-control" maxlength="100" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha inicio</label>
+                            <input type="date" name="FechaInicio" id="contratoInicio" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha fin</label>
+                            <input type="date" name="FechaFin" id="contratoFin" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Costo anual (S/)</label>
+                            <input type="number" name="CostoAnual" id="contratoCosto" class="form-control" step="0.01" min="0" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">SLA</label>
+                            <input type="text" name="SLA_Detalle" id="contratoSla" class="form-control" maxlength="2000" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDocumento" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formDocumento" enctype="multipart/form-data">
+                <div class="modal-header"><h5 class="modal-title">Subir documento</h5></div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Título</label>
+                        <input type="text" name="titulo" id="docTitulo" class="form-control" maxlength="200" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de documento</label>
+                        <select name="tipoDoc" id="docTipo" class="form-select">
+                            <option>Manual</option>
+                            <option>Diagrama</option>
+                            <option>Acta</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Archivo</label>
+                        <input type="file" name="archivo" id="docArchivo" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg" required />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Subir</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const sistemaId = @sistemaId;
+    const token = document.querySelector('meta[name="RequestVerificationToken"]')?.getAttribute('content') || '';
+
+    function postJson(url, data) {
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': token },
+            body: new URLSearchParams(data).toString()
+        }).then(r => r.json());
+    }
+
+    function confirmarYEnviar(fn, successMsg) {
+        Swal.fire({
+            title: '¿Confirmar?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí',
+            cancelButtonText: 'Cancelar',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            fn().then(data => {
+                Swal.fire({ icon: data.success ? 'success' : 'error', title: data.mensaje || data.message, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                    .then(() => { if (data.success) location.reload(); });
+            }).catch(() => Swal.fire('Error', 'Ocurrió un error.', 'error'));
+        });
+    }
+
+    // ----- VERSIONES -----
+    function abrirModalVersion(id) {
+        const modal = new bootstrap.Modal(document.getElementById('modalVersion'));
+        document.getElementById('formVersion').reset();
+        document.getElementById('versionId').value = 0;
+        document.getElementById('modalVersionTitle').textContent = 'Nueva versión';
+
+        if (id > 0) {
+            fetch('@Url.Action("Versiones", "Gobernanza")?sistemaId=' + sistemaId).then(r => r.json()).then(lista => {
+                const v = lista.find(x => x.idSistemaVersion === id);
+                if (!v) return;
+                document.getElementById('modalVersionTitle').textContent = 'Editar versión';
+                document.getElementById('versionId').value = v.idSistemaVersion;
+                document.getElementById('versionNombre').value = v.version;
+                document.getElementById('versionEntorno').value = v.entorno || '';
+                document.getElementById('versionFecha').value = v.fechaDespliegue ? v.fechaDespliegue.substring(0, 10) : '';
+                document.getElementById('versionChangelog').value = v.changelog || '';
+            });
+        }
+        modal.show();
+    }
+
+    document.getElementById('formVersion').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const data = new FormData(this);
+        postJson('@Url.Action("GuardarVersion", "Gobernanza")', data).then(r => {
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.mensaje, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                .then(() => { if (r.success) location.reload(); });
+        });
+    });
+
+    function eliminarVersion(id) {
+        confirmarYEnviar(() => postJson('@Url.Action("EliminarVersion", "Gobernanza")', { id }));
+    }
+
+    // ----- CONTRATOS -----
+    function abrirModalContrato(id) {
+        const modal = new bootstrap.Modal(document.getElementById('modalContrato'));
+        document.getElementById('formContrato').reset();
+        document.getElementById('contratoId').value = 0;
+        document.getElementById('modalContratoTitle').textContent = 'Nuevo contrato';
+
+        if (id > 0) {
+            fetch('@Url.Action("Contratos", "Gobernanza")?sistemaId=' + sistemaId).then(r => r.json()).then(lista => {
+                const c = lista.find(x => x.idSistemaContrato === id);
+                if (!c) return;
+                document.getElementById('modalContratoTitle').textContent = 'Editar contrato';
+                document.getElementById('contratoId').value = c.idSistemaContrato;
+                document.getElementById('contratoProveedor').value = c.proveedor || '';
+                document.getElementById('contratoNro').value = c.nroContrato || '';
+                document.getElementById('contratoInicio').value = c.fechaInicio ? c.fechaInicio.substring(0, 10) : '';
+                document.getElementById('contratoFin').value = c.fechaFin ? c.fechaFin.substring(0, 10) : '';
+                document.getElementById('contratoCosto').value = c.costoAnual;
+                document.getElementById('contratoSla').value = c.sla_Detalle || '';
+            });
+        }
+        modal.show();
+    }
+
+    document.getElementById('formContrato').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const data = new FormData(this);
+        postJson('@Url.Action("GuardarContrato", "Gobernanza")', data).then(r => {
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.mensaje, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                .then(() => { if (r.success) location.reload(); });
+        });
+    });
+
+    function eliminarContrato(id) {
+        confirmarYEnviar(() => postJson('@Url.Action("EliminarContrato", "Gobernanza")', { id }));
+    }
+
+    // ----- CONTINUIDAD -----
+    document.getElementById('formContinuidad').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const data = new FormData(this);
+        postJson('@Url.Action("GuardarContinuidad", "Gobernanza")', data).then(r => {
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.mensaje, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                .then(() => { if (r.success) location.reload(); });
+        });
+    });
+
+    // ----- DOCUMENTOS -----
+    function abrirModalDocumento() {
+        document.getElementById('formDocumento').reset();
+        new bootstrap.Modal(document.getElementById('modalDocumento')).show();
+    }
+
+    document.getElementById('formDocumento').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        formData.append('sistemaId', sistemaId);
+
+        fetch('@Url.Action("SubirDocumento", "Gobernanza")', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token },
+            body: formData
+        }).then(r => r.json()).then(r => {
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.mensaje, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                .then(() => { if (r.success) location.reload(); });
+        });
+    });
+
+    function eliminarDocumento(id) {
+        confirmarYEnviar(() => postJson('@Url.Action("EliminarDocumento", "Gobernanza")', { id }));
+    }
+</script>
+}

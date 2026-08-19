@@ -27,6 +27,16 @@ namespace SASI.Infraestructura.Repositories
                 existente.Codigo = sistema.Codigo;
                 existente.Nombre = sistema.Nombre;
                 existente.Descripcion = sistema.Descripcion;
+                existente.ResponsableFuncional = sistema.ResponsableFuncional;
+                existente.ResponsableTecnico = sistema.ResponsableTecnico;
+                existente.AreaDuenaId = sistema.AreaDuenaId;
+                existente.FechaPuestaProduccion = sistema.FechaPuestaProduccion;
+                existente.VersionActual = sistema.VersionActual;
+                existente.EstadoCicloVida = sistema.EstadoCicloVida;
+                existente.RpoHoras = sistema.RpoHoras;
+                existente.RtoHoras = sistema.RtoHoras;
+                existente.PoliticaRespaldo = sistema.PoliticaRespaldo;
+                existente.FechaUltimaPruebaRestauracion = sistema.FechaUltimaPruebaRestauracion;
                 await _context.SaveChangesAsync();
             }
         }
@@ -85,7 +95,9 @@ namespace SASI.Infraestructura.Repositories
 
         public async Task<Sistema?> ObtenerPorId(int id)
         {
-            return await _context.Sistemas.FirstOrDefaultAsync(s => s.IdSistema == id);
+            return await _context.Sistemas
+                .Include(s => s.AreaDuena)
+                .FirstOrDefaultAsync(s => s.IdSistema == id);
         }
     }
 }

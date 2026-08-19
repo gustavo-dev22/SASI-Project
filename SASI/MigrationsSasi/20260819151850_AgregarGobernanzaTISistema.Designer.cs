@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SistemaConvocatorias.Infraestructura.Datos;
 
@@ -11,9 +12,11 @@ using SistemaConvocatorias.Infraestructura.Datos;
 namespace SASI.MigrationsSasi
 {
     [DbContext(typeof(SasiDbContext))]
-    partial class SasiDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260819151850_AgregarGobernanzaTISistema")]
+    partial class AgregarGobernanzaTISistema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

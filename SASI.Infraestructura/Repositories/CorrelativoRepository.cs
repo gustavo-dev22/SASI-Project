@@ -34,9 +34,10 @@ namespace SASI.Infraestructura.Repositories
 
         public async Task<int> ObtenerSiguienteCorrelativoAsync(string entidad)
         {
-            var siguiente = await _context.Database
+            var siguiente = _context.Database
                 .SqlQuery<int>($"UPDATE Correlativo SET UltimoNumero = UltimoNumero + 1 OUTPUT INSERTED.UltimoNumero WHERE Entidad = {entidad}")
-                .SingleOrDefaultAsync();
+                .AsEnumerable()
+                .SingleOrDefault();
 
             if (siguiente > 0)
                 return siguiente;

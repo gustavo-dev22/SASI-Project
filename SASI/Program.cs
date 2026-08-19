@@ -93,6 +93,7 @@ builder.Services.AddTransient<IUsuarioSistemaRepository, UsuarioSistemaRepositor
 builder.Services.AddTransient<ICorrelativoRepository, CorrelativoRepository>();
 builder.Services.AddTransient<IOficinaRepository, OficinaRepository>();
 builder.Services.AddTransient<IGobernanzaRepository, GobernanzaRepository>();
+builder.Services.AddTransient<IOperacionSoporteRepository, OperacionSoporteRepository>();
 
 builder.Services.AddScoped<ISistemaServicio, SistemaServicio>();
 builder.Services.AddScoped<IRolServicio, RolServicio>();
@@ -105,6 +106,7 @@ builder.Services.AddScoped<CuentaServicio>();
 builder.Services.AddScoped<AutenticacionServicio>();
 builder.Services.AddScoped<GestionUsuariosServicio>();
 builder.Services.AddScoped<IDashboardServicio, DashboardServicio>();
+builder.Services.AddScoped<ISoporteServicio, SoporteServicio>();
 builder.Services.AddScoped<IReporteServicio, ReporteServicio>();
 
 /*builder.Services.AddDataProtection()

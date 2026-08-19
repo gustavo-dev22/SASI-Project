@@ -1,0 +1,125 @@
+@{
+    ViewData["Title"] = "Monitoreo de Sistemas";
+}
+
+<h2 class="mt-5"><i class="bi bi-activity text-primary"></i> Monitoreo: Estado Operativo de Sistemas</h2>
+
+<div class="row mt-4 g-3" id="gridSistemas">
+    @foreach (var s in ViewBag.Sistemas)
+    {
+        var clase = s.EstadoOperativoActual == "Operativo" ? "border-success" :
+                    s.EstadoOperativoActual == "Incidente" ? "border-danger" : "border-warning";
+        var icono = s.EstadoOperativoActual == "Operativo" ? "bi-check-circle-fill text-success" :
+                    s.EstadoOperativoActual == "Incidente" ? "bi-exclamation-triangle-fill text-danger" : "bi-tools text-warning";
+        var etiqueta = s.EstadoOperativoActual;
+
+        <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+            <div class="card shadow-sm h-100 border-2 @clase">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1 fw-bold">@s.Nombre</h6>
+                            <small class="text-muted">@s.Codigo</small>
+                        </div>
+                        <i class="bi @icono display-6"></i>
+                    </div>
+                    <div class="mt-3 d-flex justify-content-between align-items-center">
+                        <span class="badge bg-@(s.EstadoOperativoActual == "Operativo" ? "success" : s.EstadoOperativoActual == "Incidente" ? "danger" : "warning")">@etiqueta</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="cambiarEstado(@s.IdSistema, '@s.Nombre')">Cambiar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="modal fade" id="modalEstado" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formEstado">
+                <div class="modal-header"><h5 class="modal-title" id="modalEstadoTitle">Cambiar estado operativo</h5></div>
+                <div class="modal-body">
+                    <input type="hidden" name="SistemaId" id="estSistemaId" />
+                    <div class="mb-3">
+                        <label class="form-label">Estado</label>
+                        <select name="Estado" id="estEstado" class="form-select">
+                            <option value="0">Operativo</option>
+                            <option value="1">Incidente</option>
+                            <option value="2">Mantenimiento</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observación</label>
+                        <textarea name="Observacion" id="estObservacion" class="form-control" rows="3" maxlength="1000"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalHistorial" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="historialTitle">Historial de estados</h5></div>
+            <div class="modal-body" id="historialBody"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const token = document.querySelector('meta[name="RequestVerificationToken"]')?.getAttribute('content') || '';
+    const nombresEstado = ['Operativo', 'Incidente', 'Mantenimiento'];
+
+    function cambiarEstado(sistemaId, nombre) {
+        document.getElementById('estSistemaId').value = sistemaId;
+        document.getElementById('modalEstadoTitle').textContent = 'Cambiar estado - ' + nombre;
+        document.getElementById('formEstado').reset();
+        document.getElementById('estSistemaId').value = sistemaId;
+        new bootstrap.Modal(document.getElementById('modalEstado')).show();
+    }
+
+    document.getElementById('formEstado').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const data = new FormData(this);
+        fetch('@Url.Action("CambiarEstadoOperativo", "Soporte")', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token },
+            body: data
+        }).then(r => r.json()).then(r => {
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.mensaje, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                .then(() => { if (r.success) location.reload(); });
+        });
+    });
+
+    function verHistorial(sistemaId, nombre) {
+        document.getElementById('historialTitle').textContent = 'Historial - ' + nombre;
+        fetch('@Url.Action("HistorialEstado", "Soporte")?sistemaId=' + sistemaId)
+            .then(r => r.json())
+            .then(data => {
+                const body = document.getElementById('historialBody');
+                body.innerHTML = '';
+                if (data.length === 0) { body.innerHTML = '<p class="text-muted">Sin historial.</p>'; }
+                data.forEach(h => {
+                    const cls = ['success','danger','warning'][h.estado];
+                    const icon = ['bi-check-circle','bi-exclamation-triangle','bi-tools'][h.estado];
+                    body.innerHTML += `
+                        <div class="d-flex justify-content-between border-bottom py-2">
+                            <div>
+                                <i class="bi ${icon} text-${cls}"></i>
+                                <span class="badge bg-${cls}">${nombresEstado[h.estado]}</span>
+                                <small class="ms-2 text-muted">${h.observacion || ''}</small>
+                            </div>
+                            <small class="text-muted">${new Date(h.fechaRegistro).toLocaleString('es-PE')} - ${h.usuarioRegistro || ''}</small>
+                        </div>`;
+                });
+                new bootstrap.Modal(document.getElementById('modalHistorial')).show();
+            });
+    }
+</script>
+}

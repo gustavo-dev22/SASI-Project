@@ -1,0 +1,211 @@
+@{
+    ViewData["Title"] = "Mesa de Ayuda - Incidencias";
+}
+
+<h2 class="mt-5"><i class="bi bi-ticket-detailed-fill text-primary"></i> Mesa de Ayuda: Incidencias</h2>
+
+<div class="row mt-4 mb-3">
+    <div class="col-md-4">
+        <label class="form-label fw-bold">Filtrar por sistema</label>
+        <select id="filtroSistema" class="form-select">
+            <option value="">Todos los sistemas</option>
+            @foreach (var s in ViewBag.Sistemas as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new())
+            {
+                if ((int?)ViewBag.SistemaFiltro == int.Parse(s.Value))
+                {
+                    <option value="@s.Value" selected="selected">@s.Text</option>
+                }
+                else
+                {
+                    <option value="@s.Value">@s.Text</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-8 d-flex align-items-end justify-content-end">
+        <button class="btn btn-primary" onclick="abrirModalIncidencia(0)">
+            <i class="bi bi-plus-lg"></i> Nueva incidencia
+        </button>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-bordered table-hover align-middle text-center">
+        <thead class="table-header-custom">
+            <tr>
+                <th>#</th>
+                <th>Sistema</th>
+                <th>Título</th>
+                <th>Prioridad</th>
+                <th>Estado</th>
+                <th>Responsable</th>
+                <th>Fecha reporte</th>
+                <th>Tiempo atención</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tablaIncidencias">
+            <tr><td colspan="9" class="text-muted">Cargando...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="modalIncidencia" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="formIncidencia">
+                <div class="modal-header"><h5 class="modal-title" id="modalIncidenciaTitle">Nueva incidencia</h5></div>
+                <div class="modal-body">
+                    <input type="hidden" name="IdIncidencia" id="incId" value="0" />
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Sistema</label>
+                            <select name="SistemaId" id="incSistema" class="form-select" required>
+                                <option value="">Seleccione</option>
+                                @foreach (var s in ViewBag.Sistemas as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new())
+                                {
+                                    <option value="@s.Value">@s.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Prioridad</label>
+                            <select name="Prioridad" id="incPrioridad" class="form-select">
+                                <option value="0">Baja</option>
+                                <option value="1" selected>Media</option>
+                                <option value="2">Alta</option>
+                                <option value="3">Crítica</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Título</label>
+                        <input type="text" name="Titulo" id="incTitulo" class="form-control" maxlength="200" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <textarea name="Descripcion" id="incDescripcion" class="form-control" rows="3" maxlength="4000"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Responsable</label>
+                        <input type="text" name="Responsable" id="incResponsable" class="form-control" maxlength="200" />
+                    </div>
+                    <div class="mb-3" id="divEstadoIncidencia" style="display:none;">
+                        <label class="form-label">Estado</label>
+                        <select name="Estado" id="incEstado" class="form-select">
+                            <option value="0">Abierta</option>
+                            <option value="1">En proceso</option>
+                            <option value="2">Resuelta</option>
+                            <option value="3">Cerrada</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const token = document.querySelector('meta[name="RequestVerificationToken"]')?.getAttribute('content') || '';
+    const nombresEstado = ['Abierta', 'En proceso', 'Resuelta', 'Cerrada'];
+    const nombresPrioridad = ['Baja', 'Media', 'Alta', 'Crítica'];
+
+    function cargarIncidencias() {
+        const sistemaId = document.getElementById('filtroSistema').value;
+        fetch('@Url.Action("ListarIncidencias", "Soporte")?sistemaId=' + sistemaId)
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('tablaIncidencias');
+                tbody.innerHTML = '';
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-muted">No hay incidencias.</td></tr>';
+                    return;
+                }
+                data.forEach((i, idx) => {
+                    const prioClass = ['bg-secondary','bg-info text-dark','bg-warning text-dark','bg-danger'][i.prioridad] || 'bg-secondary';
+                    const estClass = ['bg-danger','bg-warning text-dark','bg-info text-dark','bg-success'][i.estado] || 'bg-secondary';
+                    const tAtencion = i.tiempoAtencionHoras != null ? i.tiempoAtencionHoras.toFixed(1) + ' h' : '—';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${idx + 1}</td>
+                        <td class="text-start">${i.nombreSistema || '—'}</td>
+                        <td class="text-start">${i.titulo}</td>
+                        <td><span class="badge ${prioClass}">${nombresPrioridad[i.prioridad]}</span></td>
+                        <td><span class="badge ${estClass}">${nombresEstado[i.estado]}</span></td>
+                        <td>${i.responsable || '—'}</td>
+                        <td>${new Date(i.fechaReporte).toLocaleDateString('es-PE')}</td>
+                        <td>${tAtencion}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-warning" onclick="abrirModalIncidencia(${i.idIncidencia})"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarIncidencia(${i.idIncidencia})"><i class="bi bi-trash"></i></button>
+                        </td>`;
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    function abrirModalIncidencia(id) {
+        const modal = new bootstrap.Modal(document.getElementById('modalIncidencia'));
+        document.getElementById('formIncidencia').reset();
+        document.getElementById('incId').value = 0;
+        document.getElementById('modalIncidenciaTitle').textContent = 'Nueva incidencia';
+        document.getElementById('divEstadoIncidencia').style.display = 'none';
+
+        if (id > 0) {
+            fetch('@Url.Action("ListarIncidencias", "Soporte")').then(r => r.json()).then(lista => {
+                const i = lista.find(x => x.idIncidencia === id);
+                if (!i) return;
+                document.getElementById('modalIncidenciaTitle').textContent = 'Editar incidencia';
+                document.getElementById('incId').value = i.idIncidencia;
+                document.getElementById('incSistema').value = i.sistemaId;
+                document.getElementById('incPrioridad').value = i.prioridad;
+                document.getElementById('incTitulo').value = i.titulo;
+                document.getElementById('incDescripcion').value = i.descripcion || '';
+                document.getElementById('incResponsable').value = i.responsable || '';
+                document.getElementById('incEstado').value = i.estado;
+                document.getElementById('divEstadoIncidencia').style.display = 'block';
+            });
+        }
+        modal.show();
+    }
+
+    document.getElementById('formIncidencia').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const data = new FormData(this);
+        fetch('@Url.Action("GuardarIncidencia", "Soporte")', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token },
+            body: data
+        }).then(r => r.json()).then(r => {
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.mensaje, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                .then(() => { if (r.success) { bootstrap.Modal.getInstance(document.getElementById('modalIncidencia')).hide(); cargarIncidencias(); } });
+        });
+    });
+
+    document.getElementById('filtroSistema').addEventListener('change', cargarIncidencias);
+
+    function eliminarIncidencia(id) {
+        Swal.fire({
+            title: '¿Eliminar incidencia?', icon: 'warning', showCancelButton: true,
+            confirmButtonText: 'Sí', cancelButtonText: 'Cancelar', allowOutsideClick: false
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            fetch('@Url.Action("EliminarIncidencia", "Soporte")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': token },
+                body: new URLSearchParams({ id }).toString()
+            }).then(r => r.json()).then(r => {
+                Swal.fire({ icon: r.success ? 'success' : 'error', title: r.mensaje, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                    .then(() => cargarIncidencias());
+            });
+        });
+    }
+
+    cargarIncidencias();
+</script>
+}

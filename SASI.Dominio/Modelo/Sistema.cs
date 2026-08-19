@@ -31,6 +31,9 @@ namespace SASI.Dominio.Modelo
         public string? PoliticaRespaldo { get; set; }
         public DateTime? FechaUltimaPruebaRestauracion { get; set; }
 
+        // ----- Operación y soporte -----
+        public EstadoOperativo EstadoOperativoActual { get; set; } = EstadoOperativo.Operativo;
+
         [ValidateNever]
         public IEnumerable<UsuarioSistema> Usuarios { get; set; } = default!;
 
@@ -45,5 +48,11 @@ namespace SASI.Dominio.Modelo
 
         [ValidateNever]
         public virtual IEnumerable<SistemaDocumento> Documentos { get; set; } = default!;
+
+        [ValidateNever]
+        public virtual IEnumerable<Incidencia> Incidencias { get; set; } = default!;
+
+        [ValidateNever]
+        public virtual IEnumerable<EstadoOperativoSistema> EstadosOperativos { get; set; } = default!;
     }
 }

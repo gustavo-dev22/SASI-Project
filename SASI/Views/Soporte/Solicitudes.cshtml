@@ -1,0 +1,201 @@
+@model SASI.Models.SolicitudesAccesoViewModel
+
+@{
+    ViewData["Title"] = "Solicitudes de Acceso";
+}
+
+<h2 class="mt-5"><i class="bi bi-person-check-fill text-success"></i> Solicitudes de Acceso</h2>
+
+<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+    <button class="btn btn-primary" onclick="abrirModalSolicitud()">
+        <i class="bi bi-plus-lg"></i> Solicitar acceso a un sistema
+    </button>
+</div>
+
+<ul class="nav nav-tabs" id="solTab" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="pend-tab" data-bs-toggle="tab" data-bs-target="#tab-pend" type="button" role="tab">
+            Pendientes <span class="badge bg-danger ms-1">@Model.Pendientes.Count</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="resp-tab" data-bs-toggle="tab" data-bs-target="#tab-resp" type="button" role="tab">
+            Respondidas
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content border border-top-0 rounded-bottom p-3 bg-white">
+    <div class="tab-pane fade show active" id="tab-pend" role="tabpanel">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle text-center">
+                <thead class="table-header-custom">
+                    <tr>
+                        <th>#</th><th>Usuario</th><th>Sistema</th><th>Rol</th><th>Justificación</th><th>Fecha</th><th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Pendientes.Any())
+                    {
+                        <tr><td colspan="7" class="text-muted">No hay solicitudes pendientes.</td></tr>
+                    }
+                    else
+                    {
+                        int i = 1;
+                        foreach (var s in Model.Pendientes)
+                        {
+                            <tr>
+                                <td>@i</td>
+                                <td>@(s.NombreUsuario ?? s.EmailUsuario ?? s.UsuarioId.ToString())<br/><small class="text-muted">@s.EmailUsuario</small></td>
+                                <td>@s.NombreSistema</td>
+                                <td>@s.NombreRol</td>
+                                <td class="text-start">@(s.Justificacion ?? "—")</td>
+                                <td>@s.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" onclick="responderSolicitud(@s.IdSolicitud, true)"><i class="bi bi-check-lg"></i> Aprobar</button>
+                                    <button class="btn btn-sm btn-danger" onclick="responderSolicitud(@s.IdSolicitud, false)"><i class="bi bi-x-lg"></i> Rechazar</button>
+                                </td>
+                            </tr>
+                            i++;
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="tab-resp" role="tabpanel">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle text-center">
+                <thead class="table-header-custom">
+                    <tr>
+                        <th>Usuario</th><th>Sistema</th><th>Rol</th><th>Estado</th><th>Aprobado por</th><th>Comentario</th><th>Fecha respuesta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Respondidas.Any())
+                    {
+                        <tr><td colspan="7" class="text-muted">No hay solicitudes respondidas.</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var s in Model.Respondidas)
+                        {
+                            <tr>
+                                <td>@(s.NombreUsuario ?? s.EmailUsuario ?? s.UsuarioId.ToString())</td>
+                                <td>@s.NombreSistema</td>
+                                <td>@s.NombreRol</td>
+                                <td>
+                                    @if (s.Estado == SASI.Dominio.Modelo.EstadoSolicitudAcceso.Aprobada) { <span class="badge bg-success">Aprobada</span> }
+                                    else { <span class="badge bg-danger">Rechazada</span> }
+                                </td>
+                                <td>@(s.AprobadoPor ?? "—")</td>
+                                <td class="text-start">@(s.ComentarioRespuesta ?? "—")</td>
+                                <td>@(s.FechaRespuesta?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSolicitud" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formSolicitud">
+                <div class="modal-header"><h5 class="modal-title">Solicitar acceso a un sistema</h5></div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Sistema</label>
+                        <select name="SistemaId" id="solSistema" class="form-select" required>
+                            <option value="">Seleccione</option>
+                            @foreach (var s in Model.Sistemas)
+                            {
+                                <option value="@s.Value">@s.Text</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Rol</label>
+                        <select name="RolId" id="solRol" class="form-select" required>
+                            <option value="">Seleccione un sistema primero</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Justificación</label>
+                        <textarea name="Justificacion" id="solJustificacion" class="form-control" rows="3" maxlength="1000"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Enviar solicitud</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const token = document.querySelector('meta[name="RequestVerificationToken"]')?.getAttribute('content') || '';
+
+    function abrirModalSolicitud() {
+        document.getElementById('formSolicitud').reset();
+        document.getElementById('solRol').innerHTML = '<option value="">Seleccione un sistema primero</option>';
+        new bootstrap.Modal(document.getElementById('modalSolicitud')).show();
+    }
+
+    document.getElementById('solSistema').addEventListener('change', function () {
+        const sistemaId = this.value;
+        const rolSelect = document.getElementById('solRol');
+        rolSelect.innerHTML = '<option value="">Cargando...</option>';
+        if (!sistemaId) { rolSelect.innerHTML = '<option value="">Seleccione un sistema primero</option>'; return; }
+        fetch('@Url.Action("ObtenerRolesPorSistema", "Soporte")?sistemaId=' + sistemaId)
+            .then(r => r.json())
+            .then(data => {
+                rolSelect.innerHTML = '<option value="">Seleccione</option>';
+                data.forEach(r => { rolSelect.innerHTML += `<option value="${r.idRol}">${r.nombre}</option>`; });
+            });
+    });
+
+    document.getElementById('formSolicitud').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const data = new FormData(this);
+        fetch('@Url.Action("CrearSolicitud", "Soporte")', {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token },
+            body: data
+        }).then(r => r.json()).then(r => {
+            Swal.fire({ icon: r.success ? 'success' : 'error', title: r.mensaje, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                .then(() => { if (r.success) { bootstrap.Modal.getInstance(document.getElementById('modalSolicitud')).hide(); location.reload(); } });
+        });
+    });
+
+    function responderSolicitud(id, aprobar) {
+        Swal.fire({
+            title: aprobar ? '¿Aprobar solicitud?' : '¿Rechazar solicitud?',
+            input: 'textarea',
+            inputPlaceholder: 'Comentario (opcional)',
+            inputAttributes: { maxlength: 1000 },
+            icon: aprobar ? 'question' : 'warning',
+            showCancelButton: true,
+            confirmButtonText: aprobar ? 'Aprobar' : 'Rechazar',
+            cancelButtonText: 'Cancelar',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            const body = JSON.stringify({ idSolicitud: id, comentario: result.value || '' });
+            fetch('@Url.Action("AprobarSolicitud", "Soporte")'.replace('AprobarSolicitud', aprobar ? 'AprobarSolicitud' : 'RechazarSolicitud'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                body
+            }).then(r => r.json()).then(r => {
+                Swal.fire({ icon: r.success ? 'success' : 'error', title: r.mensaje, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                    .then(() => location.reload());
+            });
+        });
+    }
+</script>
+}

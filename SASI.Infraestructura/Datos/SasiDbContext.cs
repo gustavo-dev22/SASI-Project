@@ -36,6 +36,9 @@ namespace SistemaConvocatorias.Infraestructura.Datos
         public DbSet<SistemaVersion> SistemaVersiones { get; set; }
         public DbSet<SistemaContrato> SistemaContratos { get; set; }
         public DbSet<SistemaDocumento> SistemaDocumentos { get; set; }
+        public DbSet<Incidencia> Incidencias { get; set; }
+        public DbSet<SolicitudAcceso> SolicitudesAcceso { get; set; }
+        public DbSet<EstadoOperativoSistema> EstadosOperativos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -184,6 +187,56 @@ namespace SistemaConvocatorias.Infraestructura.Datos
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<SistemaDocumento>().HasIndex(d => d.SistemaId);
+
+            // ----- Operación y soporte -----
+
+            modelBuilder.Entity<Incidencia>().ToTable("Incidencia");
+            modelBuilder.Entity<SolicitudAcceso>().ToTable("SolicitudAcceso");
+            modelBuilder.Entity<EstadoOperativoSistema>().ToTable("EstadoOperativoSistema");
+
+            modelBuilder.Entity<Incidencia>()
+                .HasKey(i => i.IdIncidencia);
+
+            modelBuilder.Entity<SolicitudAcceso>()
+                .HasKey(s => s.IdSolicitud);
+
+            modelBuilder.Entity<EstadoOperativoSistema>()
+                .HasKey(e => e.IdEstadoOperativo);
+
+            // Sistema 1:N Incidencia
+            modelBuilder.Entity<Incidencia>()
+                .HasOne(i => i.Sistema)
+                .WithMany(s => s.Incidencias)
+                .HasForeignKey(i => i.SistemaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Incidencia>().HasIndex(i => i.SistemaId);
+
+            // Sistema 1:N EstadoOperativoSistema
+            modelBuilder.Entity<EstadoOperativoSistema>()
+                .HasOne(e => e.Sistema)
+                .WithMany(s => s.EstadosOperativos)
+                .HasForeignKey(e => e.SistemaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EstadoOperativoSistema>().HasIndex(e => e.SistemaId);
+
+            // SolicitudAcceso -> Sistema y Rol
+            modelBuilder.Entity<SolicitudAcceso>()
+                .HasOne(s => s.Sistema)
+                .WithMany()
+                .HasForeignKey(s => s.SistemaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<SolicitudAcceso>()
+                .HasOne(s => s.Rol)
+                .WithMany()
+                .HasForeignKey(s => s.RolId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<SolicitudAcceso>().HasIndex(s => s.SistemaId);
+            modelBuilder.Entity<SolicitudAcceso>().HasIndex(s => s.RolId);
+            modelBuilder.Entity<SolicitudAcceso>().HasIndex(s => s.UsuarioId);
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

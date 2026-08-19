@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -42,12 +42,12 @@ namespace SASI.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(string email, string password, string? returnUrl = null)
+        public async Task<IActionResult> Login(string userName, string password, string? returnUrl = null)
         {
             if (!ModelState.IsValid)
                 return Json(new { success = false, mensaje = "Debe ingresar usuario y contraseña." });
 
-            var resultado = await _cuentaServicio.LoginAsync(email, password);
+            var resultado = await _cuentaServicio.LoginAsync(userName, password);
 
             if (!resultado.Success)
             {
@@ -66,7 +66,7 @@ namespace SASI.Controllers
             if (resultado.RequiereCambioPassword)
             {
                 HttpContext.Session.SetString("RequiereCambioPassword", "true");
-                HttpContext.Session.SetString("CambioPasswordEmail", email);
+                HttpContext.Session.SetString("CambioPasswordUserName", userName);
                 return Json(new { success = false, tipo = "cambioPasswordObligatorio" });
             }
 
@@ -100,7 +100,7 @@ namespace SASI.Controllers
         {
             HttpContext.Session.Remove("PasswordVencida");
             HttpContext.Session.Remove("RequiereCambioPassword");
-            HttpContext.Session.Remove("CambioPasswordEmail");
+            HttpContext.Session.Remove("CambioPasswordUserName");
 
             await _signInManager.SignOutAsync();
             HttpContext.Session.Clear();
@@ -119,11 +119,6 @@ namespace SASI.Controllers
         }
 
         public IActionResult AccesoDenegado() => View("AccesoDenegado");
-
-        public IActionResult Index()
-        {
-            return View();
-        }
 
         [HttpPost]
         public async Task<IActionResult> SeleccionarRol(int rolId)
@@ -156,7 +151,7 @@ namespace SASI.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CambiarPasswordObligatorio(string email, string nuevaPassword, string confirmarPassword)
+        public async Task<IActionResult> CambiarPasswordObligatorio(string userName, string nuevaPassword, string confirmarPassword)
         {
             if (string.IsNullOrWhiteSpace(nuevaPassword) || nuevaPassword != confirmarPassword)
             {
@@ -165,7 +160,7 @@ namespace SASI.Controllers
                 return View();
             }
 
-            var resultado = await _cuentaServicio.CambiarPasswordObligatorioAsync(email, nuevaPassword);
+            var resultado = await _cuentaServicio.CambiarPasswordObligatorioAsync(userName, nuevaPassword);
 
             if (resultado.Exito)
             {

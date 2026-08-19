@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Login";
 }
 
@@ -42,10 +42,10 @@
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
                 <div class="mb-3">
-                    <label for="email" class="form-label">Correo electrónico</label>
+                    <label for="userName" class="form-label">Nombre de usuario</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
-                        <input id="email" name="email" type="email" class="form-control" placeholder="usuario@correo.com" />
+                        <input id="userName" name="userName" type="text" class="form-control" placeholder="ej: admin" autocomplete="username" />
                     </div>
                 </div>
 
@@ -83,7 +83,7 @@
         <div class="modal-dialog" role="document">
             <form action="/SASI/Cuenta/CambiarPasswordObligatorio" method="post" id="formCambioPassword">
                 @Html.AntiForgeryToken()
-                <input type="hidden" name="email" id="emailCambioPassword" value="" />
+                <input type="hidden" name="userName" id="userNameCambioPassword" value="" />
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="cambiarPasswordModalLabel">Cambio de contraseña obligatorio</h5>
@@ -122,21 +122,21 @@
         document.getElementById("btnLogin").addEventListener("click", function (e) {
             e.preventDefault(); // Evitar envío tradicional
 
-            const emailInput = document.getElementById("email");
+            const userNameInput = document.getElementById("userName");
             const passwordInput = document.getElementById("password");
 
-            const email = emailInput.value.trim();
+            const userName = userNameInput.value.trim();
             const password = passwordInput.value.trim();
 
-            if (!email) {
+            if (!userName) {
                 Swal.fire({
                     icon: 'warning',
-                    title: 'Correo requerido',
-                    text: 'Por favor, ingresa tu correo electrónico.',
+                    title: 'Usuario requerido',
+                    text: 'Por favor, ingresa tu nombre de usuario.',
                     confirmButtonText: 'Aceptar',
                     allowOutsideClick: false,
                     allowEscapeKey: false
-                }).then(() => emailInput.focus());
+                }).then(() => userNameInput.focus());
                 return;
             }
 
@@ -163,7 +163,7 @@
                 url: '/Cuenta/Login',
                 type: 'POST',
                 data: {
-                    email: email,
+                    userName: userName,
                     password: password,
                     __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
                 },
@@ -211,7 +211,7 @@
                                 $.get('/SASI/Cuenta/ObtenerTokenAntiForgery', function (data) {
                                     $('input[name="__RequestVerificationToken"]').val(data.token); // actualiza el token del formulario del modal
 
-                                    $("#emailCambioPassword").val($("#email").val());
+                                    $("#userNameCambioPassword").val($("#userName").val());
                                     $('#cambiarPasswordModal').modal('show');
                                 });
                                 break;
@@ -294,7 +294,7 @@
         }
 
         // Aplicar la función a los campos
-        prevenirEspaciosYCopiar('email');
+        prevenirEspaciosYCopiar('userName');
         prevenirEspaciosYCopiar('password');
     </script>
 

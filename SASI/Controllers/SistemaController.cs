@@ -60,8 +60,6 @@ namespace SASI.Controllers
             return Ok(new { codigo });
         }
 
-        public IActionResult Crear() => View();
-
         [HttpPost]
         public async Task<IActionResult> Crear([FromBody] Sistema modelo)
         {
@@ -77,20 +75,6 @@ namespace SASI.Controllers
             {
                 return StatusCode(500, new { success = false, mensaje = "Ocurrió un error al crear el sistema." });
             }
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Eliminar(int id)
-        {
-            var resultado = await _sistemaServicio.EliminarAsync(id);
-
-            if (!resultado.Exito)
-            {
-                return Json(new { success = false, mensaje = resultado.Mensaje });
-            }
-
-            return Json(new { success = true });
         }
 
         [HttpPost]

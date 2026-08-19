@@ -1,0 +1,20 @@
+@{
+    ViewData["Title"] = "Error general";
+}
+
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="card shadow-lg border-0 p-4 text-center" style="width: 100%; max-width: 460px; border-radius: 1rem;">
+        <div class="mb-3">
+            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger bg-opacity-10" style="width: 90px; height: 90px;">
+                <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3rem;"></i>
+            </span>
+        </div>
+
+        <h4 class="fw-bold text-danger mb-2">Ocurrió un error</h4>
+        <p class="text-muted mb-4">Se produjo un error inesperado al procesar su solicitud.</p>
+
+        <a class="btn btn-primary w-100" href="/SASI/Home/Index">
+            <i class="bi bi-house-door-fill me-1"></i> Volver al inicio
+        </a>
+    </div>
+</div>

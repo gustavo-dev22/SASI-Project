@@ -202,8 +202,8 @@
                     // Checkbox: "¿Tiene oficina padre?"
                     const tienePadre = document.getElementById("TieneOficinaPadre").checked;
 
-                    // EsOficinaPrincipal es el opuesto de "tiene padre"
-                    data.TieneOficinaPadre = !tienePadre;
+                    // La oficina tiene padre si el checkbox esta marcado
+                    data.TieneOficinaPadre = tienePadre;
 
                     // IdOficinaPadre debe ser número o null (no enviar string)
                     const valPadre = document.getElementById("IdOficinaPadre").value;

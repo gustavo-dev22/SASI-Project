@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -13,6 +13,9 @@ namespace SASI.Dominio.Modelo
         Menu,
 
         [Display(Name = "Submenú")]
-        Submenu
+        Submenu,
+
+        [Display(Name = "Item")]
+        Item
     }
 }

@@ -48,8 +48,6 @@ namespace SASI.Controllers
         }
 
         [Authorize(Policy = "AccesoModulo")]
-        public IActionResult Crear() => View();
-
         [HttpPost]
         [Authorize(Policy = "AccesoModulo")]
         public async Task<IActionResult> Crear([FromBody] OficinaViewModel modelo)
@@ -64,7 +62,7 @@ namespace SASI.Controllers
                     Nombre = modelo.Nombre.Trim(),
                     Sigla = modelo.Sigla.Trim(),
                     Activo = modelo.Activo,
-                    IdOficinaPadre = modelo.TieneOficinaPadre ? null : modelo.IdOficinaPadre
+                    IdOficinaPadre = modelo.TieneOficinaPadre ? modelo.IdOficinaPadre : null
                 };
 
                 await _oficinaServicio.CrearAsync(oficina);

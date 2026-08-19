@@ -12,7 +12,7 @@
                     @foreach (var hijo in hijos)
                     {
                         <li>
-                            <a class="dropdown-item" href="/SASI/@hijo.Url">
+                            <a class="dropdown-item" href="@Url.Content("~/" + hijo.Url)">
                                 @hijo.Nombre
                             </a>
                         </li>
@@ -23,7 +23,7 @@
         else
         {
             <li class="nav-item">
-                <a class="nav-link" href="@item.Url"><i class="@item.Icono"> </i>@item.Nombre</a>
+                <a class="nav-link" href="@Url.Content("~/" + item.Url)"><i class="@item.Icono"> </i>@item.Nombre</a>
             </li>
         }
     }

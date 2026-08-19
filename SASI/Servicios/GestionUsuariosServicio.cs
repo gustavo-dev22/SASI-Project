@@ -118,7 +118,7 @@ namespace SASI.Servicios
             usuario.IdOficina = dto.OficinaId;
             usuario.UserName = dto.UserName;
             usuario.NormalizedEmail = dto.Email.ToUpper();
-            usuario.NormalizedUserName = dto.Email.ToUpper();
+            usuario.NormalizedUserName = dto.UserName.ToUpper();
             usuario.Activo = dto.Activo;
 
             usuario.AuditUsuarioModificacion = usuarioModificacion;

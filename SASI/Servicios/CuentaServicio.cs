@@ -45,9 +45,9 @@ namespace SASI.Servicios
             _diasVencimientoPassword = config.Value.DiasVencimientoPassword;
         }
 
-        public async Task<CuentaLoginResult> LoginAsync(string email, string password)
+        public async Task<CuentaLoginResult> LoginAsync(string userName, string password)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByNameAsync(userName);
 
             if (user == null || !user.Activo)
             {
@@ -149,9 +149,9 @@ namespace SASI.Servicios
                 .ToList();
         }
 
-        public async Task<(bool Exito, string? Error)> CambiarPasswordObligatorioAsync(string email, string nuevaPassword)
+        public async Task<(bool Exito, string? Error)> CambiarPasswordObligatorioAsync(string userName, string nuevaPassword)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await _userManager.FindByNameAsync(userName);
             if (user == null)
                 return (false, "Usuario no encontrado.");
 

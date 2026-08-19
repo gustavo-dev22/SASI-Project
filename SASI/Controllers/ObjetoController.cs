@@ -153,15 +153,6 @@ namespace SASI.Controllers
             return Json(new { success = resultado.Exito, estado = resultado.Estado });
         }
 
-        public async Task<IActionResult> ObjetosPorSistema(int idSistema)
-        {
-            var sistema = await _sistemaServicio.ObtenerPorIdAsync(idSistema);
-            var objetos = await _objetoServicio.ObtenerPorSistemaAsync(idSistema);
-
-            ViewBag.Sistema = sistema;
-            return View("Objetos", objetos);
-        }
-
         private async Task<List<SelectListItem>> ObtenerObjetosPadreSelectListAsync(int idSistema, int? idPadreSeleccionado = null)
         {
             var padres = await _objetoServicio.ListarObjetosPadrePorSistemaAsync(idSistema);

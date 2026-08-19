@@ -86,7 +86,7 @@
                         <i class="@item.Icono display-4 text-primary"></i>
                         <h5 class="card-title mt-3">@item.Nombre</h5>
                         <p class="card-text">@item.Nombre</p>
-                        <a href="@item.Url" class="btn btn-primary w-100">
+                        <a href="@Url.Content("~/" + item.Url)" class="btn btn-primary w-100">
                             Ir a @item.Nombre
                         </a>
                     </div>
@@ -101,7 +101,7 @@
         var mostrarModal = '@ViewBag.MostrarModalPassword' === 'True';
         if (mostrarModal) {
             var emailUsuario = '@User.Identity?.Name';
-            document.getElementById("emailCambioPassword").value = emailUsuario;
+            document.getElementById("userNameCambioPassword").value = emailUsuario;
             var error = '@ViewBag.ErrorCambioPassword';
             if (error) {
                 document.getElementById("errorCambioPassword").innerText = error;

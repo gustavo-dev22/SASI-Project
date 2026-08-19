@@ -4,6 +4,12 @@
 
 <h2 class="mt-5"><i class="bi bi-activity text-primary"></i> Monitoreo: Estado Operativo de Sistemas</h2>
 
+<div class="d-flex justify-content-end mb-3">
+    <a href="@Url.Action("Index", "Home")" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left-circle"></i> Volver al inicio
+    </a>
+</div>
+
 <div class="row mt-4 g-3" id="gridSistemas">
     @foreach (var s in ViewBag.Sistemas)
     {

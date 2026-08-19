@@ -4,14 +4,27 @@
 
 <h2 class="mt-5"><i class="bi bi-ticket-detailed-fill text-primary"></i> Mesa de Ayuda: Incidencias</h2>
 
+<div class="d-flex justify-content-end mb-3">
+    <a href="@Url.Action("Index", "Home")" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left-circle"></i> Volver al inicio
+    </a>
+</div>
+
 <div class="row mt-4 mb-3">
     <div class="col-md-4">
         <label class="form-label fw-bold">Filtrar por sistema</label>
-        <select id="filtroSistema" class="form-select">
-            <option value="">Todos los sistemas</option>
+        @{
+            var sistemaFijo = (int?)ViewBag.SistemaFiltro;
+            var selectDisabled = sistemaFijo.HasValue ? "disabled" : "";
+        }
+        <select id="filtroSistema" class="form-select" @selectDisabled>
+            @if (!sistemaFijo.HasValue)
+            {
+                <option value="">Todos los sistemas</option>
+            }
             @foreach (var s in ViewBag.Sistemas as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? new())
             {
-                if ((int?)ViewBag.SistemaFiltro == int.Parse(s.Value))
+                if (sistemaFijo.HasValue && sistemaFijo.Value == int.Parse(s.Value))
                 {
                     <option value="@s.Value" selected="selected">@s.Text</option>
                 }
@@ -21,6 +34,10 @@
                 }
             }
         </select>
+        @if (sistemaFijo.HasValue)
+        {
+            <input type="hidden" id="sistemaFijoId" value="@sistemaFijo.Value" />
+        }
     </div>
     <div class="col-md-8 d-flex align-items-end justify-content-end">
         <button class="btn btn-primary" onclick="abrirModalIncidencia(0)">
@@ -155,6 +172,12 @@
         document.getElementById('incId').value = 0;
         document.getElementById('modalIncidenciaTitle').textContent = 'Nueva incidencia';
         document.getElementById('divEstadoIncidencia').style.display = 'none';
+
+        // Si el filtro viene fijo desde la URL (?sistemaId=), preseleccionar en el modal
+        const sistemaFijo = document.getElementById('sistemaFijoId');
+        if (sistemaFijo && id === 0) {
+            document.getElementById('incSistema').value = sistemaFijo.value;
+        }
 
         if (id > 0) {
             fetch('@Url.Action("ListarIncidencias", "Soporte")').then(r => r.json()).then(lista => {

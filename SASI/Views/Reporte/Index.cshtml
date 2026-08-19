@@ -1,0 +1,235 @@
+@using SASI.Dominio.DTO
+
+@{
+    ViewData["Title"] = "Reportes y Consultas";
+
+    var resumen = ViewBag.Resumen as List<ResumenSistemaReporteDto> ?? new List<ResumenSistemaReporteDto>();
+    var sistemasSinRoles = ViewBag.SistemasSinRoles as List<SistemaSinRolesDto> ?? new List<SistemaSinRolesDto>();
+    var rolesSinObjetos = ViewBag.RolesSinObjetos as List<RolSinObjetosDto> ?? new List<RolSinObjetosDto>();
+    var oficinasSinUsuarios = ViewBag.OficinasSinUsuarios as List<OficinaSinUsuariosDto> ?? new List<OficinaSinUsuariosDto>();
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="bi bi-clipboard-data-fill text-primary"></i> Reportes y Consultas</h2>
+        <a href="@Url.Action("Index", "Home")" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left-circle"></i> Volver al inicio
+        </a>
+    </div>
+
+    <ul class="nav nav-tabs" id="reportesTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-resumen-tab" data-bs-toggle="tab" data-bs-target="#tab-resumen" type="button" role="tab" aria-controls="tab-resumen" aria-selected="true">
+                <i class="bi bi-diagram-3-fill"></i> Resumen por Sistema
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-sinroles-tab" data-bs-toggle="tab" data-bs-target="#tab-sinroles" type="button" role="tab" aria-controls="tab-sinroles" aria-selected="false">
+                <i class="bi bi-exclamation-triangle-fill text-warning"></i> Sistemas sin roles
+                <span class="badge bg-danger ms-1">@sistemasSinRoles.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-sinobjetos-tab" data-bs-toggle="tab" data-bs-target="#tab-sinobjetos" type="button" role="tab" aria-controls="tab-sinobjetos" aria-selected="false">
+                <i class="bi bi-list-task"></i> Roles sin objetos
+                <span class="badge bg-danger ms-1">@rolesSinObjetos.Count</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-oficinas-tab" data-bs-toggle="tab" data-bs-target="#tab-oficinas" type="button" role="tab" aria-controls="tab-oficinas" aria-selected="false">
+                <i class="bi bi-building"></i> Oficinas sin usuarios
+                <span class="badge bg-danger ms-1">@oficinasSinUsuarios.Count</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content border border-top-0 rounded-bottom p-3 bg-white" id="reportesTabContent">
+
+        @* -------- Resumen por Sistema -------- *@
+        <div class="tab-pane fade show active" id="tab-resumen" role="tabpanel" aria-labelledby="tab-resumen-tab">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle text-center">
+                    <thead class="table-header-custom">
+                        <tr>
+                            <th>#</th>
+                            <th>Código</th>
+                            <th>Sistema</th>
+                            <th>Estado</th>
+                            <th>Roles</th>
+                            <th>Usuarios</th>
+                            <th>Objetos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!resumen.Any())
+                        {
+                            <tr><td colspan="7" class="text-muted">No hay sistemas registrados.</td></tr>
+                        }
+                        else
+                        {
+                            int i = 1;
+                            foreach (var s in resumen)
+                            {
+                                <tr>
+                                    <td>@i</td>
+                                    <td>@s.Codigo</td>
+                                    <td class="text-start">@s.Nombre</td>
+                                    <td>
+                                        @if (s.Activo)
+                                        {
+                                            <span class="badge bg-success">Activo</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        }
+                                    </td>
+                                    <td>@s.CantidadRoles</td>
+                                    <td>@s.CantidadUsuarios</td>
+                                    <td>@s.CantidadObjetos</td>
+                                </tr>
+                                i++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* -------- Sistemas sin roles -------- *@
+        <div class="tab-pane fade" id="tab-sinroles" role="tabpanel" aria-labelledby="tab-sinroles-tab">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle text-center">
+                    <thead class="table-header-custom">
+                        <tr>
+                            <th>#</th>
+                            <th>Código</th>
+                            <th>Sistema</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!sistemasSinRoles.Any())
+                        {
+                            <tr><td colspan="4" class="text-success"><i class="bi bi-check-circle"></i> Todos los sistemas tienen al menos un rol activo.</td></tr>
+                        }
+                        else
+                        {
+                            int i = 1;
+                            foreach (var s in sistemasSinRoles)
+                            {
+                                <tr>
+                                    <td>@i</td>
+                                    <td>@s.Codigo</td>
+                                    <td class="text-start">@s.Nombre</td>
+                                    <td>
+                                        @if (s.Activo)
+                                        {
+                                            <span class="badge bg-success">Activo</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        }
+                                    </td>
+                                </tr>
+                                i++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* -------- Roles sin objetos -------- *@
+        <div class="tab-pane fade" id="tab-sinobjetos" role="tabpanel" aria-labelledby="tab-sinobjetos-tab">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle text-center">
+                    <thead class="table-header-custom">
+                        <tr>
+                            <th>#</th>
+                            <th>Rol</th>
+                            <th>Sistema</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!rolesSinObjetos.Any())
+                        {
+                            <tr><td colspan="4" class="text-success"><i class="bi bi-check-circle"></i> Todos los roles tienen objetos asignados.</td></tr>
+                        }
+                        else
+                        {
+                            int i = 1;
+                            foreach (var r in rolesSinObjetos)
+                            {
+                                <tr>
+                                    <td>@i</td>
+                                    <td class="text-start">@r.Nombre</td>
+                                    <td class="text-start">@r.NombreSistema</td>
+                                    <td>
+                                        @if (r.Activo)
+                                        {
+                                            <span class="badge bg-success">Activo</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        }
+                                    </td>
+                                </tr>
+                                i++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @* -------- Oficinas sin usuarios -------- *@
+        <div class="tab-pane fade" id="tab-oficinas" role="tabpanel" aria-labelledby="tab-oficinas-tab">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle text-center">
+                    <thead class="table-header-custom">
+                        <tr>
+                            <th>#</th>
+                            <th>Oficina</th>
+                            <th>Sigla</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!oficinasSinUsuarios.Any())
+                        {
+                            <tr><td colspan="4" class="text-success"><i class="bi bi-check-circle"></i> Todas las oficinas tienen al menos un usuario.</td></tr>
+                        }
+                        else
+                        {
+                            int i = 1;
+                            foreach (var o in oficinasSinUsuarios)
+                            {
+                                <tr>
+                                    <td>@i</td>
+                                    <td class="text-start">@o.Nombre</td>
+                                    <td>@o.Sigla</td>
+                                    <td>
+                                        @if (o.Activo)
+                                        {
+                                            <span class="badge bg-success">Activo</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        }
+                                    </td>
+                                </tr>
+                                i++;
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>

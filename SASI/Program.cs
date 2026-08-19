@@ -103,6 +103,7 @@ builder.Services.AddScoped<CuentaServicio>();
 builder.Services.AddScoped<AutenticacionServicio>();
 builder.Services.AddScoped<GestionUsuariosServicio>();
 builder.Services.AddScoped<IDashboardServicio, DashboardServicio>();
+builder.Services.AddScoped<IReporteServicio, ReporteServicio>();
 
 /*builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(@"C:\claveproteccion"))

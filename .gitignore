@@ -363,3 +363,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Archivos subidos por el usuario (Gobernanza TI)
+SASI/wwwroot/uploads/

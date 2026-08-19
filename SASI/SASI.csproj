@@ -5,6 +5,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>7e0f5a2d-1c4b-4f6a-9d8e-3a5b7c2d8f4a</UserSecretsId>
+    <!-- Excluye del proyecto/watch las carpetas generadas en tiempo de ejecución
+         (subida de documentos, logs de Serilog, claves de DataProtection). -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);wwwroot\uploads\**;Logs\**;DataProtection-Keys\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +16,13 @@
     <ProjectReference Include="..\SASI.Aplicacion\SASI.Aplicacion.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Evita que dotnet watch/hot-reload se dispare al escribir archivos en tiempo de ejecución
+         (subida de documentos, logs de Serilog, claves de DataProtection). -->
+    <Watch Remove="wwwroot/uploads/**/*" />
+    <Watch Remove="Logs/**/*" />
+    <Watch Remove="DataProtection-Keys/**/*" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.10" />

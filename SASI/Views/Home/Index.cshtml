@@ -1,8 +1,4 @@
-﻿@model List<MenuItemViewModel>
-
-@{
-    ViewData["Title"] = "Inicio";
-}
+﻿@model HomeIndexViewModel
 
 @{
     ViewData["Title"] = "Inicio";
@@ -14,8 +10,75 @@
         <p class="text-muted">Seleccione una opción para continuar</p>
     </div>
 
+    @if (Model.EsAdministrador && Model.Dashboard != null)
+    {
+        var d = Model.Dashboard;
+
+        <div class="row g-3 mb-5">
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+                <div class="card shadow-sm h-100 border-start border-4 border-primary">
+                    <div class="card-body text-center">
+                        <i class="bi bi-diagram-3-fill display-5 text-primary"></i>
+                        <h3 class="fw-bold mb-0">@d.TotalSistemas</h3>
+                        <span class="text-muted">Sistemas</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+                <div class="card shadow-sm h-100 border-start border-4 border-success">
+                    <div class="card-body text-center">
+                        <i class="bi bi-check-circle-fill display-5 text-success"></i>
+                        <h3 class="fw-bold mb-0">@d.SistemasActivos</h3>
+                        <span class="text-muted">Activos</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+                <div class="card shadow-sm h-100 border-start border-4 border-danger">
+                    <div class="card-body text-center">
+                        <i class="bi bi-x-circle-fill display-5 text-danger"></i>
+                        <h3 class="fw-bold mb-0">@d.SistemasInactivos</h3>
+                        <span class="text-muted">Inactivos</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+                <div class="card shadow-sm h-100 border-start border-4 border-info">
+                    <div class="card-body text-center">
+                        <i class="bi bi-people-fill display-5 text-info"></i>
+                        <h3 class="fw-bold mb-0">@d.TotalUsuarios</h3>
+                        <span class="text-muted">Usuarios</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+                <div class="card shadow-sm h-100 border-start border-4 border-warning">
+                    <div class="card-body text-center">
+                        <i class="bi bi-person-badge-fill display-5 text-warning"></i>
+                        <h3 class="fw-bold mb-0">@d.TotalRoles</h3>
+                        <span class="text-muted">Roles</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+                <div class="card shadow-sm h-100 border-start border-4 border-secondary">
+                    <div class="card-body text-center">
+                        <i class="bi bi-building-fill display-5 text-secondary"></i>
+                        <h3 class="fw-bold mb-0">@d.TotalOficinas</h3>
+                        <span class="text-muted">Oficinas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
     <div class="row justify-content-center">
-        @foreach (var item in Model)
+        @foreach (var item in Model.MenuItems)
         {
             <div class="col-md-4 mb-4">
                 <div class="card shadow-sm h-100">
@@ -31,32 +94,6 @@
             </div>
         }
     </div>
-
-    @* <div class="row justify-content-center">
-        <!-- Gestión de Sistemas -->
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body text-center">
-                    <i class="bi bi-diagram-3-fill display-4 text-primary"></i>
-                    <h5 class="card-title mt-3">Gestión de Sistemas</h5>
-                    <p class="card-text">Administra y configura los sistemas registrados.</p>
-                    <a href="@Url.Action("Index", "Sistema")" class="btn btn-primary w-100">Ir a Sistemas</a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Gestión de Cuentas de Usuario -->
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body text-center">
-                    <i class="bi bi-person-lines-fill display-4 text-success"></i>
-                    <h5 class="card-title mt-3">Gestión de Usuarios</h5>
-                    <p class="card-text">Asigna usuarios y roles a cada sistema.</p>
-                    <a href="@Url.Action("Index", "GestionUsuarios")" class="btn btn-success w-100">Ir a Usuarios</a>
-                </div>
-            </div>
-        </div>
-    </div> *@
 </div>
 
 <script>

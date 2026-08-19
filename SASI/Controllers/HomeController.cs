@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using SASI.Authorization;
 using SASI.Models;
+using SASI.Servicios;
 using System.Diagnostics;
 
 namespace SASI.Controllers
@@ -9,14 +11,19 @@ namespace SASI.Controllers
     [Authorize]
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
+        private const string RolAdministrador = "Administrador";
+        private const string RolAdministradorSeguridad = "Administrador de Seguridad";
 
-        public HomeController(ILogger<HomeController> logger)
+        private readonly ILogger<HomeController> _logger;
+        private readonly IDashboardServicio _dashboardServicio;
+
+        public HomeController(ILogger<HomeController> logger, IDashboardServicio dashboardServicio)
         {
             _logger = logger;
+            _dashboardServicio = dashboardServicio;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
             var menuJson = HttpContext.Session.GetString("MenuUsuario");
 
@@ -24,7 +31,16 @@ namespace SASI.Controllers
                 ? new List<MenuItemViewModel>()
                 : JsonConvert.DeserializeObject<List<MenuItemViewModel>>(menuJson);
 
-            return View(menuItems);
+            var esAdministrador = User.IsInRole(RolAdministrador) || User.IsInRole(RolAdministradorSeguridad);
+
+            var viewModel = new HomeIndexViewModel
+            {
+                MenuItems = menuItems ?? new List<MenuItemViewModel>(),
+                EsAdministrador = esAdministrador,
+                Dashboard = esAdministrador ? await _dashboardServicio.ObtenerTotalesAsync() : null
+            };
+
+            return View(viewModel);
         }
 
         public IActionResult Privacy()

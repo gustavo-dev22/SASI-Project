@@ -58,8 +58,19 @@
                                 <td class="text-start">@(s.Justificacion ?? "—")</td>
                                 <td>@s.FechaSolicitud.ToString("dd/MM/yyyy HH:mm")</td>
                                 <td>
-                                    <button class="btn btn-sm btn-success" onclick="responderSolicitud(@s.IdSolicitud, true)"><i class="bi bi-check-lg"></i> Aprobar</button>
-                                    <button class="btn btn-sm btn-danger" onclick="responderSolicitud(@s.IdSolicitud, false)"><i class="bi bi-x-lg"></i> Rechazar</button>
+                                    @if (ViewBag.EsAdmin)
+                                    {
+                                        <button class="btn btn-sm btn-success" onclick="responderSolicitud(@s.IdSolicitud, true)"><i class="bi bi-check-lg"></i> Aprobar</button>
+                                        <button class="btn btn-sm btn-danger" onclick="responderSolicitud(@s.IdSolicitud, false)"><i class="bi bi-x-lg"></i> Rechazar</button>
+                                    }
+                                    else if (ViewBag.UsuarioIdActual == s.UsuarioId.ToString())
+                                    {
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="cancelarSolicitud(@s.IdSolicitud)"><i class="bi bi-x-circle"></i> Cancelar</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">&mdash;</span>
+                                    }
                                 </td>
                             </tr>
                             i++;
@@ -177,6 +188,30 @@
                 .then(() => { if (r.success) { bootstrap.Modal.getInstance(document.getElementById('modalSolicitud')).hide(); location.reload(); } });
         });
     });
+
+    function cancelarSolicitud(id) {
+        Swal.fire({
+            title: '¿Cancelar solicitud?',
+            text: 'Se retirará la solicitud pendiente.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, cancelar',
+            cancelButtonText: 'Volver',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            const body = JSON.stringify({ idSolicitud: id });
+            fetch('@Url.Action("CancelarSolicitud", "Soporte")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
+                body
+            }).then(r => r.json()).then(r => {
+                Swal.fire({ icon: r.success ? 'success' : 'error', title: r.mensaje, confirmButtonText: 'Aceptar', allowOutsideClick: false })
+                    .then(() => location.reload());
+            });
+        });
+    }
 
     function responderSolicitud(id, aprobar) {
         Swal.fire({

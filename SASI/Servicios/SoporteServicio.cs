@@ -24,6 +24,7 @@ namespace SASI.Servicios
         Task<(bool Exito, string Mensaje)> CrearSolicitudAsync(int sistemaId, int rolId, string justificacion, Guid usuarioId);
         Task<(bool Exito, string Mensaje)> AprobarSolicitudAsync(int idSolicitud, string aprobadoPor, string? comentario);
         Task<(bool Exito, string Mensaje)> RechazarSolicitudAsync(int idSolicitud, string aprobadoPor, string? comentario);
+        Task<(bool Exito, string Mensaje)> CancelarSolicitudAsync(int idSolicitud, Guid usuarioId);
 
         // Estado operativo
         Task<List<EstadoOperativoDto>> ObtenerHistorialEstadoAsync(int sistemaId);
@@ -231,6 +232,27 @@ namespace SASI.Servicios
 
             await _repo.ResponderSolicitudAsync(solicitud);
             return (true, "Solicitud rechazada.");
+        }
+
+        public async Task<(bool Exito, string Mensaje)> CancelarSolicitudAsync(int idSolicitud, Guid usuarioId)
+        {
+            var solicitud = await _repo.ObtenerSolicitudPorIdAsync(idSolicitud);
+            if (solicitud == null)
+                return (false, "La solicitud no existe.");
+
+            if (solicitud.UsuarioId != usuarioId)
+                return (false, "No puede cancelar una solicitud de otro usuario.");
+
+            if (solicitud.Estado != EstadoSolicitudAcceso.Pendiente)
+                return (false, "La solicitud ya fue respondida.");
+
+            solicitud.Estado = EstadoSolicitudAcceso.Rechazada;
+            solicitud.FechaRespuesta = DateTime.Now;
+            solicitud.AprobadoPor = usuarioId.ToString();
+            solicitud.ComentarioRespuesta = "Cancelada por el solicitante.";
+
+            await _repo.ResponderSolicitudAsync(solicitud);
+            return (true, "Solicitud cancelada.");
         }
 
         // ----- Estado operativo -----

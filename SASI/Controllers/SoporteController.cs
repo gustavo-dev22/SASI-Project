@@ -103,6 +103,15 @@ namespace SASI.Controllers
             var pendientes = await _soporteServicio.ListarSolicitudesAsync(EstadoSolicitudAcceso.Pendiente);
             var todas = await _soporteServicio.ListarSolicitudesAsync();
 
+            // El rol activo se guarda en sesion; los claims contienen TODOS los roles del usuario.
+            var esAdmin = false;
+            var rolSeleccionado = HttpContext.Session.GetInt32("RolSeleccionado");
+            if (rolSeleccionado.HasValue)
+            {
+                var rol = await _rolServicio.ObtenerPorIdAsync(rolSeleccionado.Value);
+                esAdmin = rol != null && (rol.Nombre == "Administrador" || rol.Nombre == "Administrador de Seguridad");
+            }
+
             var vm = new Models.SolicitudesAccesoViewModel
             {
                 Pendientes = pendientes.Where(s => s.Estado == EstadoSolicitudAcceso.Pendiente).ToList(),
@@ -113,6 +122,9 @@ namespace SASI.Controllers
                     Text = $"{s.Codigo} - {s.Nombre}"
                 }).ToList()
             };
+
+            ViewBag.EsAdmin = esAdmin;
+            ViewBag.UsuarioIdActual = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             return View(vm);
         }
@@ -147,6 +159,17 @@ namespace SASI.Controllers
         public async Task<IActionResult> RechazarSolicitud([FromBody] ResponderSolicitudRequest request)
         {
             var resultado = await _soporteServicio.RechazarSolicitudAsync(request.IdSolicitud, UsuarioActual, request.Comentario);
+            return Json(new { success = resultado.Exito, mensaje = resultado.Mensaje });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CancelarSolicitud([FromBody] ResponderSolicitudRequest request)
+        {
+            var usuarioIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(usuarioIdStr, out var usuarioId))
+                return BadRequest(new { success = false, mensaje = "No se pudo identificar al usuario." });
+
+            var resultado = await _soporteServicio.CancelarSolicitudAsync(request.IdSolicitud, usuarioId);
             return Json(new { success = resultado.Exito, mensaje = resultado.Mensaje });
         }
 
@@ -185,3 +208,4 @@ namespace SASI.Controllers
         }
     }
 }
+

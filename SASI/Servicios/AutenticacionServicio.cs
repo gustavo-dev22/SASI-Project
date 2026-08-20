@@ -47,12 +47,51 @@ namespace SASI.Servicios
             if (user == null)
                 return null;
 
+            // 🛡️ El estado INACTIVO del usuario PRIMA sobre cualquier otro caso:
+            // un usuario desactivado en SASI no puede iniciar sesión en ningún
+            // sistema integrado, sin importar credenciales o bloqueos.
+            if (!user.Activo)
+            {
+                return new
+                {
+                    success = false,
+                    codigo = "USUARIO_INACTIVO",
+                    message = "Su usuario se encuentra inactivo en el sistema. Contacte al administrador para restablecer el acceso.",
+                    bloqueado = false,
+                    inactivo = true
+                };
+            }
+
             if (await _userManager.IsLockedOutAsync(user))
-                return null;
+            {
+                return new
+                {
+                    success = false,
+                    codigo = "USUARIO_BLOQUEADO",
+                    message = "Su cuenta se encuentra bloqueada temporalmente por intentos fallidos de inicio de sesión. Contacte al administrador del sistema.",
+                    bloqueado = true,
+                    inactivo = false
+                };
+            }
 
             if (!await _userManager.CheckPasswordAsync(user, password))
             {
                 await _userManager.AccessFailedAsync(user);
+
+                // Si este intento activó el bloqueo por política (máx. intentos fallidos),
+                // se informa de inmediato al usuario en lugar de un error genérico.
+                if (await _userManager.IsLockedOutAsync(user))
+                {
+                    return new
+                    {
+                        success = false,
+                        codigo = "USUARIO_BLOQUEADO",
+                        message = "Su cuenta se encuentra bloqueada temporalmente por intentos fallidos de inicio de sesión. Contacte al administrador del sistema.",
+                        bloqueado = true,
+                        inactivo = false
+                    };
+                }
+
                 return null;
             }
 

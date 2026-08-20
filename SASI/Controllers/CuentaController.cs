@@ -95,15 +95,38 @@ namespace SASI.Controllers
             return Json(new { success = true, redirectUrl = Url.Action("Index", "Home") });
         }
 
+        [HttpGet]
         [HttpPost]
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Logout()
         {
-            HttpContext.Session.Remove("PasswordVencida");
-            HttpContext.Session.Remove("RequiereCambioPassword");
-            HttpContext.Session.Remove("CambioPasswordUserName");
+            // Tolerante a sesion/cookie expirada: cierra sesion siempre, sin exigir token antiforgery.
+            try
+            {
+                HttpContext.Session.Remove("PasswordVencida");
+                HttpContext.Session.Remove("RequiereCambioPassword");
+                HttpContext.Session.Remove("CambioPasswordUserName");
+                HttpContext.Session.Remove("RolSeleccionado");
+                HttpContext.Session.Remove("MenuUsuario");
 
-            await _signInManager.SignOutAsync();
-            HttpContext.Session.Clear();
+                await _signInManager.SignOutAsync();
+            }
+            catch (Exception)
+            {
+                // Si la sesion ya expiro, se ignora; el usuario queda sin autenticar de todos modos.
+            }
+            finally
+            {
+                try
+                {
+                    HttpContext.Session.Clear();
+                }
+                catch (Exception)
+                {
+                    // sesion no disponible: no bloquear el logout
+                }
+            }
+
             return RedirectToAction("Login", "Cuenta");
         }
 

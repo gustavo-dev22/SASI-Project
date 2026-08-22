@@ -17,5 +17,6 @@ namespace SASI.Dominio.Repositories
         Task<IEnumerable<Objeto>> ListarObjetosPadrePorSistemaAsync(int idSistema);
         Task<List<Objeto>> ObtenerPorIdsAsync(List<int> ids);
         Task<bool> ExistenObjetosParaSistema(int idSistema);
+        Task<IEnumerable<Objeto>> ObtenerPorSistemaYRolNombreAsync(int sistemaId, string rolNombre);
     }
 }

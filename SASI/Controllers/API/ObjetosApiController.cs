@@ -103,5 +103,52 @@ namespace SASI.Controllers.API
                 });
             }
         }
+
+        [HttpGet("PorSistemaYRolNombre")]
+        public async Task<IActionResult> ObtenerObjetosPorSistemaYRolNombre([FromQuery] int sistemaId, [FromQuery] string rolNombre)
+        {
+            try
+            {
+                var objetos = await _objetoServicio.ObtenerPorSistemaYRolNombreAsync(sistemaId, rolNombre);
+
+                if (objetos == null || !objetos.Any())
+                {
+                    return Ok(new
+                    {
+                        exito = true,
+                        mensaje = "No existen objetos asignados para este rol.",
+                        datos = new List<object>()
+                    });
+                }
+
+                var resultado = objetos.Select(o => new
+                {
+                    idObjeto = o.IdObjeto,
+                    nombre = o.Nombre,
+                    tipo = o.Tipo,
+                    url = o.Url,
+                    titulo = o.Titulo ?? o.Nombre,
+                    icono = o.Icono ?? "fa-solid fa-circle",
+                    activo = o.Activo,
+                    orden = o.Orden,
+                    idPadre = o.IdPadre
+                });
+
+                return Ok(new
+                {
+                    exito = true,
+                    mensaje = "Menús obtenidos correctamente.",
+                    datos = resultado
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    exito = false,
+                    mensaje = "Ocurrió un error al consultar los menús del rol: " + ex.Message
+                });
+            }
+        }
     }
 }

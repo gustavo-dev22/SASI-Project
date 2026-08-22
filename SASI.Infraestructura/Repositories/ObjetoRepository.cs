@@ -77,5 +77,20 @@ namespace SASI.Infraestructura.Repositories
             .OrderBy(o => o.Orden)
             .ToListAsync();
         }
+
+        public async Task<IEnumerable<Objeto>> ObtenerPorSistemaYRolNombreAsync(int sistemaId, string rolNombre)
+        {
+            return await (from o in _context.Objetos
+                          join ro in _context.RolObjetos on o.IdObjeto equals ro.IdObjeto
+                          join r in _context.Roles on ro.IdRol equals r.IdRol
+                          where r.IdSistema == sistemaId
+                            && r.Nombre == rolNombre
+                            && r.Activo == true
+                            && o.Activo == true
+                          orderby o.Orden ascending
+                          select o)
+                          .Distinct()
+                          .ToListAsync();
+        }
     }
 }

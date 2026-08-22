@@ -13,6 +13,7 @@ namespace SASI.Aplicacion.Servicios
         Task<List<Objeto>> ListarObjetosPadrePorSistemaAsync(int idSistema);
         Task<List<Objeto>> ObtenerPorIdsAsync(List<int> ids);
         Task<bool> ExistenObjetosParaSistemaAsync(int idSistema);
+        Task<IEnumerable<Objeto>> ObtenerPorSistemaYRolNombreAsync(int sistemaId, string rolNombre);
     }
 
     public class ObjetoServicio : IObjetoServicio
@@ -52,5 +53,10 @@ namespace SASI.Aplicacion.Servicios
 
         public async Task<bool> ExistenObjetosParaSistemaAsync(int idSistema)
             => await _objetoRepository.ExistenObjetosParaSistema(idSistema);
+
+        public async Task<IEnumerable<Objeto>> ObtenerPorSistemaYRolNombreAsync(int sistemaId, string rolNombre)
+        {
+            return await _objetoRepository.ObtenerPorSistemaYRolNombreAsync(sistemaId, rolNombre);
+        }
     }
 }

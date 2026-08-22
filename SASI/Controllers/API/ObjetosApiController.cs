@@ -104,6 +104,7 @@ namespace SASI.Controllers.API
             }
         }
 
+        [AllowAnonymous]
         [HttpGet("PorSistemaYRolNombre")]
         public async Task<IActionResult> ObtenerObjetosPorSistemaYRolNombre([FromQuery] int sistemaId, [FromQuery] string rolNombre)
         {

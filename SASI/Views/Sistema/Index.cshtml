@@ -492,7 +492,7 @@
             const idSistema = document.getElementById("IdSistema").value;
 
             if (!idSistema || idSistema === "0") {
-                fetch('/SASI/Sistema/ObtenerProximoCodigo')
+                fetch('@Url.Content("~/Sistema/ObtenerProximoCodigo")')
                     .then(resp => resp.json())
                     .then(data => {
                         document.getElementById("Codigo").value = data.codigo;

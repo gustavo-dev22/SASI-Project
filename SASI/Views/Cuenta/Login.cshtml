@@ -81,7 +81,7 @@
     <!-- Modal de cambio de contraseña -->
     <div class="modal fade" id="cambiarPasswordModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="cambiarPasswordModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
-            <form action="/SASI/Cuenta/CambiarPasswordObligatorio" method="post" id="formCambioPassword">
+            <form action="@Url.Content("~/Cuenta/CambiarPasswordObligatorio")" method="post" id="formCambioPassword">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="userName" id="userNameCambioPassword" value="" />
                 <div class="modal-content">
@@ -160,7 +160,7 @@
 
             // Enviar los datos vía AJAX
             $.ajax({
-                url: '/Cuenta/Login',
+                url: '@Url.Content("~/Cuenta/Login")',
                 type: 'POST',
                 data: {
                     userName: userName,
@@ -208,7 +208,7 @@
                             case "cambioPasswordObligatorio":
                             case "passwordVencida":
                                     // Regenerar el token antes de mostrar el modal
-                                $.get('/SASI/Cuenta/ObtenerTokenAntiForgery', function (data) {
+                                $.get('@Url.Content("~/Cuenta/ObtenerTokenAntiForgery")', function (data) {
                                     $('input[name="__RequestVerificationToken"]').val(data.token); // actualiza el token del formulario del modal
 
                                     $("#userNameCambioPassword").val($("#userName").val());

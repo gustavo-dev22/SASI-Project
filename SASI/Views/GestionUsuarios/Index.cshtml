@@ -560,7 +560,7 @@
             const rolId = $(this).data('rol-id');
 
             $.ajax({
-                url: '/SASI/GestionUsuarios/ActualizarRolPrincipal',
+                url: '@Url.Content("~/GestionUsuarios/ActualizarRolPrincipal")',
                 type: 'POST',
                 data: {
                     sistemaId: sistemaId,
@@ -923,7 +923,7 @@
           const usuariosAValidar = registros.map(r => r.usuario);
 
           try {
-            const resp = await fetch('/SASI/GestionUsuarios/ValidarExistentes', {
+            const resp = await fetch('@Url.Content("~/GestionUsuarios/ValidarExistentes")', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

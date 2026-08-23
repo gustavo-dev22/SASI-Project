@@ -297,11 +297,12 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
+
     var sasiDbContext = scope.ServiceProvider.GetRequiredService<SasiDbContext>();
-    await sasiDbContext.Database.MigrateAsync();
+    await MigracionesConReconciliacion.AplicarAsync(sasiDbContext, "SASI", app.Logger);
 
     var identityDbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-    await identityDbContext.Database.MigrateAsync();
+    await MigracionesConReconciliacion.AplicarAsync(identityDbContext, "Identity", app.Logger);
 }
 
 //using (var scope = app.Services.CreateScope())

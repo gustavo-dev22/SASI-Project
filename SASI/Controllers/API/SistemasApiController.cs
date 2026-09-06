@@ -86,7 +86,10 @@ namespace SASI.Controllers.API
                     {
                         u.UsuarioId,
                         u.NombreCompleto,
-                        u.Email
+                        u.Email,
+                        u.IdOficina,       // <-- NUEVO CAMPO
+                        u.NombreOficina,   // <-- NUEVO CAMPO
+                        u.SiglaOficina     // <-- NUEVO CAMPO
                     })
                 });
             }

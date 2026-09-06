@@ -10,5 +10,9 @@ namespace SASI.Dominio.DTO
         public string Rol { get; set; } = string.Empty;
         public DateTime FechaAsignacion { get; set; }
         public bool EsPrincipal { get; set; }
+
+        public int? IdOficina { get; set; }
+        public string? NombreOficina { get; set; }
+        public string? SiglaOficina { get; set; }
     }
 }

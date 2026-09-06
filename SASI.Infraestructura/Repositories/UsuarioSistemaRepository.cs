@@ -108,9 +108,9 @@ namespace SASI.Infraestructura.Repositories
                 .ToListAsync();
 
             var rolIds = asignaciones.Select(a => a.RolId).Distinct().ToList();
-
-            // 2. Obtener únicamente los usuarios asignados (consulta en BD con IN)
             var usuarioIds = asignaciones.Select(a => a.UsuarioId).Distinct().ToList();
+
+            // 2. Obtener usuarios (sin Include, sólo las propiedades que ya tiene ApplicationUser)
             var usuarios = await _userManager.Users
                 .AsNoTracking()
                 .Where(u => usuarioIds.Contains(u.Id))
@@ -121,11 +121,23 @@ namespace SASI.Infraestructura.Repositories
                 .Where(r => rolIds.Contains(r.IdRol))
                 .ToListAsync();
 
-            // 4. Mapear resultados
+            // 4. Obtener el catálogo de oficinas desde _context
+            var oficinas = await _context.Oficina
+                .AsNoTracking()
+                .ToListAsync();
+
+            // 5. Mapear resultados cruzando con la lista de oficinas
             var resultado = asignaciones.Select(asig =>
             {
                 var user = usuarios.FirstOrDefault(u => u.Id == asig.UsuarioId);
                 var rol = roles.FirstOrDefault(r => r.IdRol == asig.RolId);
+
+                // Si en ApplicationUser la propiedad se llama OficinaId o IdOficina:
+                // (Usa el nombre que tenga definido tu ApplicationUser, ej: user?.OficinaId)
+                var oficinaId = user?.IdOficina;
+                var ofi = oficinaId.HasValue
+                    ? oficinas.FirstOrDefault(o => o.IdOficina == oficinaId.Value)
+                    : null;
 
                 return new UsuarioAsignadoDto
                 {
@@ -136,7 +148,11 @@ namespace SASI.Infraestructura.Repositories
                     RolId = asig.RolId,
                     Rol = rol?.Nombre ?? "",
                     FechaAsignacion = asig.FechaAsignacion,
-                    EsPrincipal = asig.EsPrincipal
+                    EsPrincipal = asig.EsPrincipal,
+                    // Datos de la oficina obtenidos directamente
+                    IdOficina = oficinaId,
+                    NombreOficina = ofi?.Nombre,
+                    SiglaOficina = ofi?.Sigla
                 };
             }).ToList();
 

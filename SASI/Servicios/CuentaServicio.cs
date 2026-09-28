@@ -10,6 +10,7 @@ namespace SASI.Servicios
     public class CuentaLoginResult
     {
         public bool Success { get; set; }
+        public Guid UserId { get; set; }
         public string? Tipo { get; set; }
         public int? IntentosRestantes { get; set; }
         public int? OficinaId { get; set; }
@@ -45,7 +46,10 @@ namespace SASI.Servicios
             _diasVencimientoPassword = config.Value.DiasVencimientoPassword;
         }
 
-        public async Task<CuentaLoginResult> LoginAsync(string userName, string password)
+        public Task<CuentaLoginResult> LoginAsync(string userName, string password)
+            => LoginAsync(userName, password, _sistemaId);
+
+        public async Task<CuentaLoginResult> LoginAsync(string userName, string password, int sistemaId)
         {
             var user = await _userManager.FindByNameAsync(userName);
 
@@ -62,7 +66,7 @@ namespace SASI.Servicios
                 return new CuentaLoginResult { Success = false, Tipo = "credencialesInvalidas", IntentosRestantes = intentosRestantes };
             }
 
-            var tieneAccesoSASI = await _usuarioSistemaServicio.UsuarioTieneRolActivoEnSistemaAsync(user.Id, _sistemaId);
+            var tieneAccesoSASI = await _usuarioSistemaServicio.UsuarioTieneRolActivoEnSistemaAsync(user.Id, sistemaId);
             if (!tieneAccesoSASI)
             {
                 await _signInManager.SignOutAsync();
@@ -72,7 +76,7 @@ namespace SASI.Servicios
             user.IntentosFallidosConsecutivos = 0;
             await _userManager.UpdateAsync(user);
 
-            var resultado = new CuentaLoginResult { Success = true };
+            var resultado = new CuentaLoginResult { Success = true, UserId = user.Id };
 
             if (user.IdOficina.HasValue)
             {
@@ -104,11 +108,11 @@ namespace SASI.Servicios
                 resultado.DiasRestantesPassword = diasRestantes;
             }
 
-            var rolPredeterminado = await _usuarioSistemaServicio.ObtenerRolPredeterminadoAsync(user.Id, _sistemaId);
+            var rolPredeterminado = await _usuarioSistemaServicio.ObtenerRolPredeterminadoAsync(user.Id, sistemaId);
             if (rolPredeterminado.HasValue)
                 resultado.RolSeleccionado = rolPredeterminado;
 
-            var menu = await ConstruirMenuAsync(user.Id, rolPredeterminado);
+            var menu = await ConstruirMenuAsync(user.Id, rolPredeterminado, sistemaId);
             if (menu == null)
             {
                 await _signInManager.SignOutAsync();
@@ -119,15 +123,18 @@ namespace SASI.Servicios
             return resultado;
         }
 
-        public async Task<List<MenuItemViewModel>> SeleccionarRolAsync(Guid userId, int rolId)
+        public Task<List<MenuItemViewModel>> SeleccionarRolAsync(Guid userId, int rolId)
+            => SeleccionarRolAsync(userId, rolId, _sistemaId);
+
+        public async Task<List<MenuItemViewModel>> SeleccionarRolAsync(Guid userId, int rolId, int sistemaId)
         {
             var sistemasYRoles = await _usuarioSistemaServicio.ObtenerSistemasYRolesDelUsuarioAsync(userId);
 
-            if (!sistemasYRoles.Any(sr => sr.SistemaId == _sistemaId && sr.SistemaActivo))
+            if (!sistemasYRoles.Any(sr => sr.SistemaId == sistemaId && sr.SistemaActivo))
                 return new List<MenuItemViewModel>();
 
             var nuevoRol = sistemasYRoles
-                .FirstOrDefault(sr => sr.RolId == rolId && sr.SistemaId == _sistemaId && sr.UsuarioSistemaRolActivo);
+                .FirstOrDefault(sr => sr.RolId == rolId && sr.SistemaId == sistemaId && sr.UsuarioSistemaRolActivo);
 
             if (nuevoRol == null)
                 return new List<MenuItemViewModel>();
@@ -167,18 +174,18 @@ namespace SASI.Servicios
             return (true, null);
         }
 
-        private async Task<List<MenuItemViewModel>?> ConstruirMenuAsync(Guid userId, int? rolId)
+        private async Task<List<MenuItemViewModel>?> ConstruirMenuAsync(Guid userId, int? rolId, int sistemaId)
         {
             var sistemasYRoles = await _usuarioSistemaServicio.ObtenerSistemasYRolesDelUsuarioAsync(userId);
 
-            if (!sistemasYRoles.Any(sr => sr.SistemaId == _sistemaId && sr.SistemaActivo && sr.UsuarioSistemaRolActivo))
+            if (!sistemasYRoles.Any(sr => sr.SistemaId == sistemaId && sr.SistemaActivo && sr.UsuarioSistemaRolActivo))
                 return null;
 
             if (!rolId.HasValue)
                 return new List<MenuItemViewModel>();
 
             var rolActivo = sistemasYRoles
-                .FirstOrDefault(sr => sr.RolId == rolId.Value && sr.SistemaId == _sistemaId && sr.UsuarioSistemaRolActivo);
+                .FirstOrDefault(sr => sr.RolId == rolId.Value && sr.SistemaId == sistemaId && sr.UsuarioSistemaRolActivo);
 
             if (rolActivo == null)
                 return new List<MenuItemViewModel>();

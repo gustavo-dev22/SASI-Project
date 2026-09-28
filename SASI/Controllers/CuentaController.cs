@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using SASI.Aplicacion.Servicios;
+using SASI.Dominio.Modelo;
 using SASI.Infraestructura.Identity;
 using SASI.Models;
 using SASI.Servicios;
@@ -15,6 +17,8 @@ namespace SASI.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly CuentaServicio _cuentaServicio;
         private readonly IPermisoUsuarioServicio _permisoUsuarioServicio;
+        private readonly SsoServicio _ssoServicio;
+        private readonly ISistemaServicio _sistemaServicio;
         private readonly IAntiforgery Antiforgery;
 
         public CuentaController(
@@ -22,21 +26,47 @@ namespace SASI.Controllers
             UserManager<ApplicationUser> userManager,
             CuentaServicio cuentaServicio,
             IPermisoUsuarioServicio permisoUsuarioServicio,
+            SsoServicio ssoServicio,
+            ISistemaServicio sistemaServicio,
             IAntiforgery antiforgery)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _cuentaServicio = cuentaServicio;
             _permisoUsuarioServicio = permisoUsuarioServicio;
+            _ssoServicio = ssoServicio;
+            _sistemaServicio = sistemaServicio;
             Antiforgery = antiforgery;
         }
 
         [HttpGet]
-        public IActionResult Login(string? returnUrl = null)
+        public async Task<IActionResult> Login(
+            string? returnUrl = null,
+            string? client_id = null,
+            string? state = null,
+            string? code_challenge = null,
+            string? code_challenge_method = null)
         {
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
                 return RedirectToAction("Index", "Home");
+            }
+
+            if (!string.IsNullOrWhiteSpace(client_id))
+            {
+                var cliente = await _ssoServicio.ObtenerClienteActivoAsync(client_id);
+                if (cliente == null || !SsoServicio.RedirectUriValida(cliente, returnUrl))
+                {
+                    ViewBag.ErrorSso = "Solicitud de acceso no válida.";
+                    return View();
+                }
+
+                var sistema = await _sistemaServicio.ObtenerPorIdAsync(cliente.IdSistema);
+                ViewBag.NombreSistema = sistema?.Nombre;
+                ViewBag.ClientId = client_id;
+                ViewBag.State = state;
+                ViewBag.CodeChallenge = code_challenge;
+                ViewBag.CodeChallengeMethod = code_challenge_method;
             }
 
             ViewData["ReturnUrl"] = returnUrl;
@@ -45,12 +75,29 @@ namespace SASI.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(string userName, string password, string? returnUrl = null)
+        public async Task<IActionResult> Login(
+            string userName,
+            string password,
+            string? returnUrl = null,
+            string? client_id = null,
+            string? state = null,
+            string? code_challenge = null,
+            string? code_challenge_method = null)
         {
             if (!ModelState.IsValid)
                 return Json(new { success = false, mensaje = "Debe ingresar usuario y contraseña." });
 
-            var resultado = await _cuentaServicio.LoginAsync(userName, password);
+            SistemaCliente? cliente = null;
+            if (!string.IsNullOrWhiteSpace(client_id))
+            {
+                cliente = await _ssoServicio.ObtenerClienteActivoAsync(client_id);
+                if (cliente == null || !SsoServicio.RedirectUriValida(cliente, returnUrl))
+                    return Json(new { success = false, tipo = "credencialesInvalidas", mensaje = "Solicitud SSO no válida." });
+            }
+
+            var resultado = cliente != null
+                ? await _cuentaServicio.LoginAsync(userName, password, cliente.IdSistema)
+                : await _cuentaServicio.LoginAsync(userName, password);
 
             if (!resultado.Success)
             {
@@ -77,6 +124,21 @@ namespace SASI.Controllers
             {
                 HttpContext.Session.SetString("PasswordVencida", "true");
                 return Json(new { success = false, tipo = "cambioPasswordObligatorio" });
+            }
+
+            // Flujo SSO: se emite el authorization code y se redirige al sistema externo.
+            // No se configuran menú/rol de la consola SASI para no interferir con su sesión.
+            if (cliente != null)
+            {
+                var code = await _ssoServicio.CrearAuthCodeAsync(
+                    cliente, resultado.UserId, returnUrl!, code_challenge, code_challenge_method);
+
+                var separador = returnUrl!.Contains('?') ? '&' : '?';
+                var redirectSso = $"{returnUrl}{separador}code={Uri.EscapeDataString(code)}";
+                if (!string.IsNullOrEmpty(state))
+                    redirectSso += $"&state={Uri.EscapeDataString(state)}";
+
+                return Json(new { success = true, redirectUrl = redirectSso });
             }
 
             if (resultado.DiasRestantesPassword.HasValue)

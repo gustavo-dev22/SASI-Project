@@ -18,11 +18,16 @@ namespace SASI.Controllers.API
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly AutenticacionServicio _autenticacionServicio;
+        private readonly SsoServicio _ssoServicio;
 
-        public AuthController(UserManager<ApplicationUser> userManager, AutenticacionServicio autenticacionServicio)
+        public AuthController(
+            UserManager<ApplicationUser> userManager,
+            AutenticacionServicio autenticacionServicio,
+            SsoServicio ssoServicio)
         {
             _userManager = userManager;
             _autenticacionServicio = autenticacionServicio;
+            _ssoServicio = ssoServicio;
         }
 
         [HttpPost("login")]
@@ -43,6 +48,31 @@ namespace SASI.Controllers.API
             }
 
             return Ok(resultado);
+        }
+
+        // Canje del authorization code emitido por el flujo SSO (OAuth2 authorization_code + PKCE).
+        [HttpPost("token")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Token([FromBody] SsoTokenRequest request)
+        {
+            if (request == null || !string.Equals(request.GrantType, "authorization_code", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { success = false, error = "unsupported_grant_type" });
+
+            var canje = await _ssoServicio.CanjearAsync(
+                request.ClientId,
+                request.ClientSecret,
+                request.Code,
+                request.CodeVerifier,
+                request.RedirectUri);
+
+            if (!canje.Exito)
+                return BadRequest(new { success = false, error = "invalid_grant", error_description = canje.Error });
+
+            var sesion = await _autenticacionServicio.EmitirSesionAsync(canje.UsuarioId);
+            if (sesion == null)
+                return Unauthorized(new { success = false, error = "invalid_grant", error_description = "Usuario no habilitado." });
+
+            return Ok(sesion);
         }
 
         [HttpPost("refresh")]

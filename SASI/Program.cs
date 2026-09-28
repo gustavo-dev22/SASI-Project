@@ -104,8 +104,9 @@ builder.Services.AddScoped<IPermisoServicio, PermisoServicio>();
 builder.Services.AddScoped<IUsuarioSistemaServicio, UsuarioSistemaServicio>();
 builder.Services.AddScoped<ISistemaGobernanzaServicio, SistemaGobernanzaServicio>();
 
-builder.Services.AddScoped<CuentaServicio>();
-builder.Services.AddScoped<IPermisoUsuarioServicio, PermisoUsuarioServicio>();
+        builder.Services.AddScoped<CuentaServicio>();
+        builder.Services.AddScoped<SsoServicio>();
+        builder.Services.AddScoped<IPermisoUsuarioServicio, PermisoUsuarioServicio>();
 builder.Services.AddScoped<AutenticacionServicio>();
 builder.Services.AddScoped<GestionUsuariosServicio>();
 builder.Services.AddScoped<IDashboardServicio, DashboardServicio>();
@@ -303,6 +304,8 @@ if (app.Environment.IsDevelopment())
 
     var sasiDbContext = scope.ServiceProvider.GetRequiredService<SasiDbContext>();
     await MigracionesConReconciliacion.AplicarAsync(sasiDbContext, "SASI", app.Logger);
+
+    await SsoClienteSeeder.SembrarAsync(sasiDbContext, app.Configuration, app.Logger);
 
     var identityDbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
     await MigracionesConReconciliacion.AplicarAsync(identityDbContext, "Identity", app.Logger);

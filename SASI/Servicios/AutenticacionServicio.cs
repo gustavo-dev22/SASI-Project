@@ -100,6 +100,22 @@ namespace SASI.Servicios
 
             await _userManager.ResetAccessFailedCountAsync(user);
 
+            return await ConstruirRespuestaSesionAsync(user);
+        }
+
+        // Emite una sesión (access + refresh + accesos) para un usuario ya autenticado,
+        // sin volver a validar credenciales. Usado por el canje de authorization code (SSO).
+        public async Task<object?> EmitirSesionAsync(Guid usuarioId)
+        {
+            var user = await _userManager.FindByIdAsync(usuarioId.ToString());
+            if (user == null || !user.Activo || await _userManager.IsLockedOutAsync(user))
+                return null;
+
+            return await ConstruirRespuestaSesionAsync(user);
+        }
+
+        private async Task<object?> ConstruirRespuestaSesionAsync(ApplicationUser user)
+        {
             var sistemasYRoles = await _usuarioSistemaServicio.ObtenerSistemasYRolesDelUsuarioAsync(user.Id);
 
             var claims = await ConstruirClaimsAsync(user, sistemasYRoles);

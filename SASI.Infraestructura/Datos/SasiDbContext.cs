@@ -41,6 +41,8 @@ namespace SistemaConvocatorias.Infraestructura.Datos
         public DbSet<EstadoOperativoSistema> EstadosOperativos { get; set; }
         public DbSet<Accion> Acciones { get; set; }
         public DbSet<RolObjetoAccion> RolObjetoAcciones { get; set; }
+        public DbSet<SistemaCliente> SistemaClientes { get; set; }
+        public DbSet<AuthCode> AuthCodes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -272,6 +274,26 @@ namespace SistemaConvocatorias.Infraestructura.Datos
                 .WithMany()
                 .HasForeignKey(x => x.IdAccion)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // ----- SSO: clientes y authorization codes -----
+
+            modelBuilder.Entity<SistemaCliente>().ToTable("SistemaCliente");
+            modelBuilder.Entity<AuthCode>().ToTable("AuthCode");
+
+            modelBuilder.Entity<SistemaCliente>().HasKey(c => c.IdSistemaCliente);
+            modelBuilder.Entity<SistemaCliente>().HasIndex(c => c.ClientId).IsUnique();
+            modelBuilder.Entity<SistemaCliente>().HasIndex(c => c.IdSistema);
+
+            modelBuilder.Entity<SistemaCliente>()
+                .HasOne(c => c.Sistema)
+                .WithMany()
+                .HasForeignKey(c => c.IdSistema)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AuthCode>().HasKey(a => a.IdAuthCode);
+            modelBuilder.Entity<AuthCode>().HasIndex(a => a.CodeHash).IsUnique();
+            modelBuilder.Entity<AuthCode>().HasIndex(a => a.UsuarioId);
+            modelBuilder.Entity<AuthCode>().HasIndex(a => a.ExpiraUtc);
 
             // Catálogo global fijo de acciones (seed).
             modelBuilder.Entity<Accion>().HasData(

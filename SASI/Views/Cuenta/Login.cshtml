@@ -36,11 +36,29 @@
         </div>
 
         <div class="card shadow-lg p-4" style="width: 100%; max-width: 400px;" id="loginCard">
-            <h4 class="text-center mb-4">Iniciar sesión</h4>
+            <h4 class="text-center mb-4">
+                @if (!string.IsNullOrEmpty(ViewBag.NombreSistema as string))
+                {
+                    <text>Acceso al sistema @ViewBag.NombreSistema</text>
+                }
+                else
+                {
+                    <text>Iniciar sesión</text>
+                }
+            </h4>
+
+            @if (!string.IsNullOrEmpty(ViewBag.ErrorSso as string))
+            {
+                <div class="alert alert-danger">@ViewBag.ErrorSso</div>
+            }
 
             <form asp-action="Login" method="post" id="loginForm">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+                <input type="hidden" name="client_id" value="@ViewBag.ClientId" />
+                <input type="hidden" name="state" value="@ViewBag.State" />
+                <input type="hidden" name="code_challenge" value="@ViewBag.CodeChallenge" />
+                <input type="hidden" name="code_challenge_method" value="@ViewBag.CodeChallengeMethod" />
                 <div class="mb-3">
                     <label for="userName" class="form-label">Nombre de usuario</label>
                     <div class="input-group">
@@ -165,6 +183,11 @@
                 data: {
                     userName: userName,
                     password: password,
+                    returnUrl: $('input[name="returnUrl"]').val(),
+                    client_id: $('input[name="client_id"]').val(),
+                    state: $('input[name="state"]').val(),
+                    code_challenge: $('input[name="code_challenge"]').val(),
+                    code_challenge_method: $('input[name="code_challenge_method"]').val(),
                     __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
                 },
                 success: function (data) {

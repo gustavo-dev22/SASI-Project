@@ -21,6 +21,7 @@ namespace SASI.Controllers
         private readonly ISistemaServicio _sistemaServicio;
         private readonly IUsuarioSistemaServicio _usuarioSistemaServicio;
         private readonly IAntiforgery Antiforgery;
+        private readonly ILogger<CuentaController> _logger;
 
         public CuentaController(
             SignInManager<ApplicationUser> signInManager,
@@ -30,8 +31,10 @@ namespace SASI.Controllers
             SsoServicio ssoServicio,
             ISistemaServicio sistemaServicio,
             IUsuarioSistemaServicio usuarioSistemaServicio,
-            IAntiforgery antiforgery)
+            IAntiforgery antiforgery,
+            ILogger<CuentaController> logger)
         {
+            _logger = logger;
             _signInManager = signInManager;
             _userManager = userManager;
             _cuentaServicio = cuentaServicio;
@@ -52,30 +55,54 @@ namespace SASI.Controllers
         {
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
-                // Sesión SASI ya activa: si la petición es SSO, se emite el code sin volver a pedir credenciales.
-                if (!string.IsNullOrWhiteSpace(client_id))
+                // Sin intención SSO: se mantiene el acceso normal a la consola SASI.
+                if (string.IsNullOrWhiteSpace(client_id))
+                    return RedirectToAction("Index", "Home");
+
+                // Sesión SASI ya activa + petición SSO: se emite el code sin pedir credenciales.
+                var clienteActivo = await _ssoServicio.ObtenerClienteActivoAsync(client_id);
+                if (clienteActivo == null || !_ssoServicio.RedirectUriValida(clienteActivo, returnUrl))
                 {
-                    var clienteActivo = await _ssoServicio.ObtenerClienteActivoAsync(client_id);
-                    if (clienteActivo != null && _ssoServicio.RedirectUriValida(clienteActivo, returnUrl))
-                    {
-                        var usuario = await _userManager.GetUserAsync(User);
-                        if (usuario != null &&
-                            await _usuarioSistemaServicio.UsuarioTieneRolActivoEnSistemaAsync(usuario.Id, clienteActivo.IdSistema))
-                        {
-                            var codigo = await _ssoServicio.CrearAuthCodeAsync(
-                                clienteActivo, usuario.Id, returnUrl!, code_challenge, code_challenge_method);
+                    _logger.LogWarning(
+                        "SSO: solicitud no válida (cliente {ClientId}, returnUrl {ReturnUrl}).",
+                        client_id, returnUrl);
 
-                            var sep = returnUrl!.Contains('?') ? '&' : '?';
-                            var destino = $"{returnUrl}{sep}code={Uri.EscapeDataString(codigo)}";
-                            if (!string.IsNullOrEmpty(state))
-                                destino += $"&state={Uri.EscapeDataString(state)}";
-
-                            return Redirect(destino);
-                        }
-                    }
+                    ViewBag.ErrorSso = "Solicitud de acceso no válida.";
+                    return View();
                 }
 
-                return RedirectToAction("Index", "Home");
+                var usuario = await _userManager.GetUserAsync(User);
+                if (usuario != null &&
+                    await _usuarioSistemaServicio.UsuarioTieneRolActivoEnSistemaAsync(usuario.Id, clienteActivo.IdSistema))
+                {
+                    var codigo = await _ssoServicio.CrearAuthCodeAsync(
+                        clienteActivo, usuario.Id, returnUrl!, code_challenge, code_challenge_method);
+
+                    var sep = returnUrl!.Contains('?') ? '&' : '?';
+                    var destino = $"{returnUrl}{sep}code={Uri.EscapeDataString(codigo)}";
+                    if (!string.IsNullOrEmpty(state))
+                        destino += $"&state={Uri.EscapeDataString(state)}";
+
+                    return Redirect(destino);
+                }
+
+                // La sesión activa no sirve para el sistema solicitado: se cierra para permitir
+                // el ingreso con otra cuenta, en lugar de enviar a la consola SASI.
+                _logger.LogWarning(
+                    "SSO: la sesión activa ({Usuario}) no tiene rol en el sistema {SistemaId} (cliente {ClientId}).",
+                    usuario?.UserName ?? "(usuario no resuelto)", clienteActivo.IdSistema, clienteActivo.ClientId);
+
+                await _signInManager.SignOutAsync();
+
+                var sistema = await _sistemaServicio.ObtenerPorIdAsync(clienteActivo.IdSistema);
+                ViewBag.NombreSistema = sistema?.Nombre;
+                ViewBag.ClientId = client_id;
+                ViewBag.State = state;
+                ViewBag.CodeChallenge = code_challenge;
+                ViewBag.CodeChallengeMethod = code_challenge_method;
+                ViewBag.ErrorSso = "La sesión activa no tiene acceso a este sistema. Ingrese con otra cuenta.";
+                ViewData["ReturnUrl"] = returnUrl;
+                return View();
             }
 
             if (!string.IsNullOrWhiteSpace(client_id))

@@ -102,6 +102,11 @@
             <form action="@Url.Content("~/Cuenta/CambiarPasswordObligatorio")" method="post" id="formCambioPassword">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="userName" id="userNameCambioPassword" value="" />
+                <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+                <input type="hidden" name="client_id" value="@ViewBag.ClientId" />
+                <input type="hidden" name="state" value="@ViewBag.State" />
+                <input type="hidden" name="code_challenge" value="@ViewBag.CodeChallenge" />
+                <input type="hidden" name="code_challenge_method" value="@ViewBag.CodeChallengeMethod" />
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="cambiarPasswordModalLabel">Cambio de contraseña obligatorio</h5>

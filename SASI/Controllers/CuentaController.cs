@@ -278,7 +278,15 @@ namespace SASI.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CambiarPasswordObligatorio(string userName, string nuevaPassword, string confirmarPassword)
+        public async Task<IActionResult> CambiarPasswordObligatorio(
+            string userName,
+            string nuevaPassword,
+            string confirmarPassword,
+            string? returnUrl = null,
+            string? client_id = null,
+            string? state = null,
+            string? code_challenge = null,
+            string? code_challenge_method = null)
         {
             if (string.IsNullOrWhiteSpace(nuevaPassword) || nuevaPassword != confirmarPassword)
             {
@@ -292,6 +300,29 @@ namespace SASI.Controllers
             if (resultado.Exito)
             {
                 HttpContext.Session.Remove("PasswordVencida");
+
+                // Si el cambio de contraseña vino de un flujo SSO, se continúa con el
+                // sistema de origen en lugar de enviar al usuario a la consola SASI.
+                if (!string.IsNullOrWhiteSpace(client_id))
+                {
+                    var cliente = await _ssoServicio.ObtenerClienteActivoAsync(client_id);
+                    if (cliente != null && _ssoServicio.RedirectUriValida(cliente, returnUrl))
+                    {
+                        var usuario = await _userManager.FindByNameAsync(userName);
+                        if (usuario != null)
+                        {
+                            var codigo = await _ssoServicio.CrearAuthCodeAsync(
+                                cliente, usuario.Id, returnUrl!, code_challenge, code_challenge_method);
+
+                            var sep = returnUrl!.Contains('?') ? '&' : '?';
+                            var destino = $"{returnUrl}{sep}code={Uri.EscapeDataString(codigo)}";
+                            if (!string.IsNullOrEmpty(state))
+                                destino += $"&state={Uri.EscapeDataString(state)}";
+
+                            return Redirect(destino);
+                        }
+                    }
+                }
 
                 await _signInManager.SignOutAsync();
                 return RedirectToAction("Login", "Cuenta");

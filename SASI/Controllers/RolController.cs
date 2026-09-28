@@ -147,7 +147,11 @@ namespace SASI.Controllers
             if (rol == null)
                 return NotFound();
 
-            var objetos = await _rolServicio.ObtenerObjetosPorSistemaAsync(rol.IdSistema);
+            var objetos = (await _rolServicio.ObtenerObjetosPorSistemaAsync(rol.IdSistema))
+                .Where(o => o.Activo
+                            && !string.IsNullOrWhiteSpace(o.Url)
+                            && o.Url!.Trim() != "#")
+                .ToList();
             var acciones = await _permisoServicio.ObtenerCatalogoAccionesAsync();
             var asignaciones = await _rolServicio.ObtenerAsignacionesAccionesPorRolAsync(idRol);
             var sistema = await _sistemaServicio.ObtenerPorIdAsync(rol.IdSistema);

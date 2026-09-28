@@ -30,6 +30,12 @@ namespace SASI.Controllers.API
             _ssoServicio = ssoServicio;
         }
 
+        // Disponibilidad del servicio de autenticación. Permite a los sistemas consumidores
+        // avisar al usuario si SASI no está accesible antes de redirigir al login SSO.
+        [HttpGet("ping")]
+        [AllowAnonymous]
+        public IActionResult Ping() => Ok(new { ok = true });
+
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)

@@ -28,8 +28,8 @@
             {
                 <p class="text-muted">
                     Se listan solo los módulos con URL (páginas accionables); los menús contenedores
-                    no se incluyen. <strong>LISTAR</strong> se concede automáticamente al marcar
-                    cualquier otra acción del objeto.
+                    no se incluyen. <strong>LISTAR</strong> es implícito: se concede automáticamente
+                    para todo objeto que tenga al menos una acción.
                 </p>
 
                 <div class="table-responsive">
@@ -40,7 +40,14 @@
                                 <th style="width:90px;">Tipo</th>
                                 @foreach (var accion in acciones)
                                 {
-                                    <th style="width:110px;">@accion.Nombre</th>
+                                    if (accion.Codigo == AccionesSistema.Listar)
+                                    {
+                                        <th style="width:110px;">@accion.Nombre <span class="text-muted fw-normal">(implícito)</span></th>
+                                    }
+                                    else
+                                    {
+                                        <th style="width:110px;">@accion.Nombre</th>
+                                    }
                                 }
                             </tr>
                         </thead>
@@ -55,14 +62,23 @@
                                     {
                                         var key = $"{obj.IdObjeto}:{accion.IdAccion}";
                                         var check = seleccionados.Contains(key);
-                                        <td>
-                                            <input type="checkbox"
-                                                   class="form-check-input chk-permiso"
-                                                   data-idobjeto="@obj.IdObjeto"
-                                                   data-idaccion="@accion.IdAccion"
-                                                   data-codigo="@accion.Codigo"
-                                                   @(check ? "checked" : "") />
-                                        </td>
+                                        if (accion.Codigo == AccionesSistema.Listar)
+                                        {
+                                            <td title="Implícito: se concede junto con cualquier otra acción">
+                                                <input type="checkbox" class="form-check-input" checked disabled />
+                                            </td>
+                                        }
+                                        else
+                                        {
+                                            <td>
+                                                <input type="checkbox"
+                                                       class="form-check-input chk-permiso"
+                                                       data-idobjeto="@obj.IdObjeto"
+                                                       data-idaccion="@accion.IdAccion"
+                                                       data-codigo="@accion.Codigo"
+                                                       @(check ? "checked" : "") />
+                                            </td>
+                                        }
                                     }
                                 </tr>
                             }
@@ -83,38 +99,11 @@
 @section Scripts {
     <script>
         (function () {
-            const CODIGO_LISTAR = 'LISTAR';
-
-            function normalizarFila(fila, changedCheckbox) {
-                const checks = fila.querySelectorAll('.chk-permiso');
-                const listar = Array.from(checks).find(c => c.dataset.codigo === CODIGO_LISTAR);
-                const otrosMarcados = Array.from(checks).some(c => c.dataset.codigo !== CODIGO_LISTAR && c.checked);
-
-                if (cambiando(listar, changedCheckbox)) {
-                    if (!listar.checked) {
-                        checks.forEach(c => { if (c !== listar) c.checked = false; });
-                    }
-                } else if (otrosMarcados) {
-                    listar.checked = true;
-                }
-            }
-
-            function cambiando(listar, changed) {
-                return listar === changed;
-            }
-
-            document.querySelectorAll('#tablaPermisos tbody tr').forEach(function (fila) {
-                fila.querySelectorAll('.chk-permiso').forEach(function (chk) {
-                    chk.addEventListener('change', function () {
-                        normalizarFila(fila, chk);
-                    });
-                });
-            });
-
             document.getElementById('btnGuardarPermisos').addEventListener('click', function () {
                 const permisos = [];
                 document.querySelectorAll('#tablaPermisos tbody tr').forEach(function (fila) {
-                    fila.querySelectorAll('.chk-permiso:checked').forEach(function (chk) {
+                    // LISTAR es implícito (checkbox deshabilitado) => no se envía.
+                    fila.querySelectorAll('.chk-permiso:checked:not(:disabled)').forEach(function (chk) {
                         permisos.push({
                             idObjeto: parseInt(chk.dataset.idobjeto, 10),
                             idAccion: parseInt(chk.dataset.idaccion, 10)

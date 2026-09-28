@@ -14,17 +14,20 @@ namespace SASI.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly CuentaServicio _cuentaServicio;
+        private readonly IPermisoUsuarioServicio _permisoUsuarioServicio;
         private readonly IAntiforgery Antiforgery;
 
         public CuentaController(
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
             CuentaServicio cuentaServicio,
+            IPermisoUsuarioServicio permisoUsuarioServicio,
             IAntiforgery antiforgery)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _cuentaServicio = cuentaServicio;
+            _permisoUsuarioServicio = permisoUsuarioServicio;
             Antiforgery = antiforgery;
         }
 
@@ -89,6 +92,11 @@ namespace SASI.Controllers
             HttpContext.Session.Remove("MenuUsuario");
             HttpContext.Session.SetString("MenuUsuario", JsonConvert.SerializeObject(resultado.Menu ?? new List<MenuItemViewModel>()));
 
+            if (resultado.RolSeleccionado.HasValue)
+            {
+                await _permisoUsuarioServicio.EstablecerAsync(resultado.RolSeleccionado.Value);
+            }
+
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);
 
@@ -108,6 +116,7 @@ namespace SASI.Controllers
                 HttpContext.Session.Remove("CambioPasswordUserName");
                 HttpContext.Session.Remove("RolSeleccionado");
                 HttpContext.Session.Remove("MenuUsuario");
+                _permisoUsuarioServicio.Limpiar();
 
                 await _signInManager.SignOutAsync();
             }
@@ -156,6 +165,8 @@ namespace SASI.Controllers
 
             var menu = await _cuentaServicio.SeleccionarRolAsync(user.Id, rolId);
             HttpContext.Session.SetString("MenuUsuario", JsonConvert.SerializeObject(menu));
+
+            await _permisoUsuarioServicio.EstablecerAsync(rolId);
 
             return RedirectToAction("Index", "Home");
         }

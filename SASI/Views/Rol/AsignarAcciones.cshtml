@@ -1,0 +1,169 @@
+@using SASI.Dominio.Modelo
+@model PermisoRolViewModel
+
+@{
+    ViewData["Title"] = "Permisos por Acción";
+    var seleccionados = new HashSet<string>(Model.PermisosSeleccionados ?? new List<string>());
+    var acciones = Model.Acciones.OrderBy(a => a.Orden).ToList();
+    var objetos = Model.Objetos.OrderBy(o => o.Orden).ToList();
+}
+
+<div class="container mt-4">
+    <div class="card shadow rounded-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                Permisos por acción — Rol: <strong>@Model.NombreRol</strong>
+                <span class="text-white-50 fs-6">(@Model.NombreSistema)</span>
+            </h5>
+            <a asp-action="Index" asp-route-sistemaId="@Model.IdSistema" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-arrow-left-circle"></i> Regresar
+            </a>
+        </div>
+        <div class="card-body">
+            @if (!objetos.Any())
+            {
+                <div class="alert alert-warning mb-0">El sistema no tiene objetos registrados.</div>
+            }
+            else
+            {
+                <p class="text-muted">
+                    Marque las acciones permitidas por objeto. <strong>LISTAR</strong> se concede automáticamente
+                    cuando el objeto tiene alguna acción.
+                </p>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle text-center" id="tablaPermisos">
+                        <thead class="table-header-custom">
+                            <tr>
+                                <th class="text-start">Objeto</th>
+                                <th style="width:90px;">Tipo</th>
+                                @foreach (var accion in acciones)
+                                {
+                                    <th style="width:110px;">@accion.Nombre</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var obj in objetos)
+                            {
+                                if (!obj.Activo) { continue; }
+                                <tr data-idobjeto="@obj.IdObjeto">
+                                    <td class="text-start">@obj.Nombre</td>
+                                    <td><span class="badge bg-secondary">@obj.Tipo</span></td>
+                                    @foreach (var accion in acciones)
+                                    {
+                                        var key = $"{obj.IdObjeto}:{accion.IdAccion}";
+                                        var check = seleccionados.Contains(key);
+                                        <td>
+                                            <input type="checkbox"
+                                                   class="form-check-input chk-permiso"
+                                                   data-idobjeto="@obj.IdObjeto"
+                                                   data-idaccion="@accion.IdAccion"
+                                                   data-codigo="@accion.Codigo"
+                                                   @(check ? "checked" : "") />
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 text-end">
+                    <button type="button" class="btn btn-success" id="btnGuardarPermisos">
+                        <i class="bi bi-save"></i> Guardar Permisos
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const CODIGO_LISTAR = 'LISTAR';
+
+            function normalizarFila(fila, changedCheckbox) {
+                const checks = fila.querySelectorAll('.chk-permiso');
+                const listar = Array.from(checks).find(c => c.dataset.codigo === CODIGO_LISTAR);
+                const otrosMarcados = Array.from(checks).some(c => c.dataset.codigo !== CODIGO_LISTAR && c.checked);
+
+                if (cambiando(listar, changedCheckbox)) {
+                    if (!listar.checked) {
+                        checks.forEach(c => { if (c !== listar) c.checked = false; });
+                    }
+                } else if (otrosMarcados) {
+                    listar.checked = true;
+                }
+            }
+
+            function cambiando(listar, changed) {
+                return listar === changed;
+            }
+
+            document.querySelectorAll('#tablaPermisos tbody tr').forEach(function (fila) {
+                fila.querySelectorAll('.chk-permiso').forEach(function (chk) {
+                    chk.addEventListener('change', function () {
+                        normalizarFila(fila, chk);
+                    });
+                });
+            });
+
+            document.getElementById('btnGuardarPermisos').addEventListener('click', function () {
+                const permisos = [];
+                document.querySelectorAll('#tablaPermisos tbody tr').forEach(function (fila) {
+                    fila.querySelectorAll('.chk-permiso:checked').forEach(function (chk) {
+                        permisos.push({
+                            idObjeto: parseInt(chk.dataset.idobjeto, 10),
+                            idAccion: parseInt(chk.dataset.idaccion, 10)
+                        });
+                    });
+                });
+
+                Swal.fire({
+                    title: '¿Desea guardar los permisos?',
+                    text: 'Se actualizarán las acciones concedidas al rol.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                }).then(function (result) {
+                    if (!result.isConfirmed) return;
+
+                    fetch('@Url.Action("GuardarAsignacionAcciones", "Rol")', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ idRol: @Model.IdRol, permisos: permisos })
+                    })
+                    .then(r => r.json())
+                    .then(function (data) {
+                        if (data.success) {
+                            mostrarSpinnerYMensaje({
+                                mensajeExito: 'Los permisos fueron actualizados correctamente.',
+                                callbackFinal: () => location.reload()
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.mensaje || 'No se pudieron guardar los permisos.',
+                                confirmButtonText: 'Aceptar'
+                            });
+                        }
+                    })
+                    .catch(function () {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error del servidor',
+                            text: 'Ocurrió un error inesperado al guardar los permisos.',
+                            confirmButtonText: 'Aceptar'
+                        });
+                    });
+                });
+            });
+        })();
+    </script>
+}

@@ -17,6 +17,9 @@ namespace SASI.Aplicacion.Servicios
         Task<List<int>> ObtenerIdsObjetosPorRolAsync(int idRol);
         Task GuardarAsignacionObjetosAsync(int idRol, List<int> idsAsignados);
         Task<bool> ExistenObjetosParaSistemaAsync(int idSistema);
+        Task<Dictionary<int, List<string>>> ObtenerAccionesPorRolAsync(int idRol);
+        Task<List<(int IdObjeto, int IdAccion)>> ObtenerAsignacionesAccionesPorRolAsync(int idRol);
+        Task GuardarAsignacionAccionesAsync(int idRol, List<(int IdObjeto, int IdAccion)> asignaciones);
     }
 
     public class RolServicio : IRolServicio
@@ -24,15 +27,18 @@ namespace SASI.Aplicacion.Servicios
         private readonly IRolRepository _rolRepository;
         private readonly IObjetoRepository _objetoRepository;
         private readonly IRolObjetoRepository _rolObjetoRepository;
+        private readonly IRolObjetoAccionRepository _rolObjetoAccionRepository;
 
         public RolServicio(
             IRolRepository rolRepository,
             IObjetoRepository objetoRepository,
-            IRolObjetoRepository rolObjetoRepository)
+            IRolObjetoRepository rolObjetoRepository,
+            IRolObjetoAccionRepository rolObjetoAccionRepository)
         {
             _rolRepository = rolRepository;
             _objetoRepository = objetoRepository;
             _rolObjetoRepository = rolObjetoRepository;
+            _rolObjetoAccionRepository = rolObjetoAccionRepository;
         }
 
         public async Task<IEnumerable<Rol>> ObtenerPorSistemaIdAsync(int sistemaId)
@@ -72,5 +78,14 @@ namespace SASI.Aplicacion.Servicios
 
         public async Task<bool> ExistenObjetosParaSistemaAsync(int idSistema)
             => await _objetoRepository.ExistenObjetosParaSistema(idSistema);
+
+        public Task<Dictionary<int, List<string>>> ObtenerAccionesPorRolAsync(int idRol)
+            => _rolObjetoAccionRepository.ObtenerPermisosPorRolAsync(idRol);
+
+        public Task<List<(int IdObjeto, int IdAccion)>> ObtenerAsignacionesAccionesPorRolAsync(int idRol)
+            => _rolObjetoAccionRepository.ObtenerAsignacionesPorRolAsync(idRol);
+
+        public Task GuardarAsignacionAccionesAsync(int idRol, List<(int IdObjeto, int IdAccion)> asignaciones)
+            => _rolObjetoAccionRepository.ActualizarAsignacionesAsync(idRol, asignaciones);
     }
 }

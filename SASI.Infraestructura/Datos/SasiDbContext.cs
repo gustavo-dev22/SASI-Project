@@ -39,6 +39,8 @@ namespace SistemaConvocatorias.Infraestructura.Datos
         public DbSet<Incidencia> Incidencias { get; set; }
         public DbSet<SolicitudAcceso> SolicitudesAcceso { get; set; }
         public DbSet<EstadoOperativoSistema> EstadosOperativos { get; set; }
+        public DbSet<Accion> Acciones { get; set; }
+        public DbSet<RolObjetoAccion> RolObjetoAcciones { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -237,6 +239,51 @@ namespace SistemaConvocatorias.Infraestructura.Datos
             modelBuilder.Entity<SolicitudAcceso>().HasIndex(s => s.SistemaId);
             modelBuilder.Entity<SolicitudAcceso>().HasIndex(s => s.RolId);
             modelBuilder.Entity<SolicitudAcceso>().HasIndex(s => s.UsuarioId);
+
+            // ----- Permisos por acción -----
+
+            modelBuilder.Entity<Accion>().ToTable("Accion");
+            modelBuilder.Entity<RolObjetoAccion>().ToTable("RolObjetoAccion");
+
+            modelBuilder.Entity<Accion>().HasKey(a => a.IdAccion);
+            modelBuilder.Entity<Accion>().HasIndex(a => a.Codigo).IsUnique();
+
+            modelBuilder.Entity<RolObjetoAccion>().HasKey(x => x.IdRolObjetoAccion);
+            modelBuilder.Entity<RolObjetoAccion>().HasIndex(x => x.IdRol);
+            modelBuilder.Entity<RolObjetoAccion>().HasIndex(x => x.IdObjeto);
+            modelBuilder.Entity<RolObjetoAccion>().HasIndex(x => x.IdAccion);
+            modelBuilder.Entity<RolObjetoAccion>()
+                .HasIndex(x => new { x.IdRol, x.IdObjeto, x.IdAccion }).IsUnique();
+
+            modelBuilder.Entity<RolObjetoAccion>()
+                .HasOne(x => x.Rol)
+                .WithMany()
+                .HasForeignKey(x => x.IdRol)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<RolObjetoAccion>()
+                .HasOne(x => x.Objeto)
+                .WithMany()
+                .HasForeignKey(x => x.IdObjeto)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<RolObjetoAccion>()
+                .HasOne(x => x.Accion)
+                .WithMany()
+                .HasForeignKey(x => x.IdAccion)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Catálogo global fijo de acciones (seed).
+            modelBuilder.Entity<Accion>().HasData(
+                new Accion { IdAccion = 1, Codigo = "LISTAR", Nombre = "Listar", Orden = 1, Activo = true },
+                new Accion { IdAccion = 2, Codigo = "CREAR", Nombre = "Crear", Orden = 2, Activo = true },
+                new Accion { IdAccion = 3, Codigo = "EDITAR", Nombre = "Editar", Orden = 3, Activo = true },
+                new Accion { IdAccion = 4, Codigo = "ELIMINAR", Nombre = "Eliminar", Orden = 4, Activo = true },
+                new Accion { IdAccion = 5, Codigo = "BLOQUEAR", Nombre = "Bloquear", Orden = 5, Activo = true },
+                new Accion { IdAccion = 6, Codigo = "DESBLOQUEAR", Nombre = "Desbloquear", Orden = 6, Activo = true },
+                new Accion { IdAccion = 7, Codigo = "EXPORTAR", Nombre = "Exportar", Orden = 7, Activo = true },
+                new Accion { IdAccion = 8, Codigo = "APROBAR", Nombre = "Aprobar", Orden = 8, Activo = true }
+            );
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

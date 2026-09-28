@@ -17,5 +17,8 @@ namespace SASI.Dominio.DTO
         public bool Activo { get; set; }
         public int Orden { get; set; }
         public int? IdPadre { get; set; }
+
+        // Acciones concedidas al rol sobre este objeto (LISTAR, CREAR, ...).
+        public List<string> Acciones { get; set; } = new();
     }
 }

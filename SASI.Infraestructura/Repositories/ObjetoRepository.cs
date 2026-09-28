@@ -92,5 +92,15 @@ namespace SASI.Infraestructura.Repositories
                           .Distinct()
                           .ToListAsync();
         }
+
+        public async Task<int?> ObtenerIdObjetoPorUrlAsync(int idSistema, string urlController)
+        {
+            return await _context.Objetos
+                .AsNoTracking()
+                .Where(o => o.IdSistema == idSistema && o.Activo
+                            && o.Url != null && EF.Functions.Like(o.Url, urlController + "%"))
+                .Select(o => (int?)o.IdObjeto)
+                .FirstOrDefaultAsync();
+        }
     }
 }

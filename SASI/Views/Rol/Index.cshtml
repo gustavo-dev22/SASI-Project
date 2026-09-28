@@ -1,6 +1,8 @@
 ﻿@model X.PagedList.IPagedList<SASI.Dominio.Modelo.Rol>
 @using X.PagedList
 @using X.PagedList.Mvc.Core
+@using SASI.Dominio.Modelo
+@inject SASI.Servicios.IPermisoUsuarioServicio PermisoUsuario
 
 @{
     ViewData["Title"] = "Gestión de Roles";
@@ -11,9 +13,14 @@
 <h2 class="mt-5">Gestión de Roles: <b><u>@nombreSistema</u></b> <span class="text-muted fs-5">(@Model.TotalItemCount)</span></h2>
 
 <div class="d-flex justify-content-between align-items-center mb-3 mt-5">
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearRolModal" id="btnNuevoRol">
-        <i class="bi bi-plus-lg"></i> Nuevo Rol
-    </button>
+    <div class="d-flex gap-2">
+        @if (PermisoUsuario.Tiene("Rol", AccionesSistema.Crear))
+        {
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearRolModal" id="btnNuevoRol">
+                <i class="bi bi-plus-lg"></i> Nuevo Rol
+            </button>
+        }
+    </div>
 
     <a href="@Url.Content("~/Sistema/Index")" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left"></i> Regresar
@@ -62,25 +69,41 @@
                         }
                     </td>
                     <td>
-                        <a href="javascript:;" class="btn btn-sm btn-outline-warning me-1 btnEditarRol" data-id="@rol.IdRol" 
-                            data-bs-toggle="tooltip"
-                           data-bs-placement="top"
-                           title="Editar">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <button class="btn btn-sm btn-outline-secondary btnToggleRol me-1"
-                                data-id="@rol.IdRol"
-                                data-estado="@rol.Activo.ToString().ToLower()"
-                                data-bs-toggle="tooltip" title="Habilitar/Deshabilitar rol">
-                            <i class="bi @(rol.Activo ? "bi-toggle-on text-success" : "bi-toggle-off text-muted")"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-success me-1 btnAsignarObjetos"
-                                data-id="@rol.IdRol"
-                                data-bs-toggle="tooltip"
-                                data-bs-placement="top"
-                                title="Asignar objetos">
-                            <i class="bi bi-diagram-2"></i>
-                        </button>
+                        @if (PermisoUsuario.Tiene("Rol", AccionesSistema.Editar))
+                        {
+                            <a href="javascript:;" class="btn btn-sm btn-outline-warning me-1 btnEditarRol" data-id="@rol.IdRol"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        }
+                        @if (PermisoUsuario.Tiene("Rol", AccionesSistema.Bloquear))
+                        {
+                            <button class="btn btn-sm btn-outline-secondary btnToggleRol me-1"
+                                    data-id="@rol.IdRol"
+                                    data-estado="@rol.Activo.ToString().ToLower()"
+                                    data-bs-toggle="tooltip" title="Habilitar/Deshabilitar rol">
+                                <i class="bi @(rol.Activo ? "bi-toggle-on text-success" : "bi-toggle-off text-muted")"></i>
+                            </button>
+                        }
+                        @if (PermisoUsuario.Tiene("Rol", AccionesSistema.Editar))
+                        {
+                            <button class="btn btn-sm btn-outline-success me-1 btnAsignarObjetos"
+                                    data-id="@rol.IdRol"
+                                    data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title="Asignar objetos">
+                                <i class="bi bi-diagram-2"></i>
+                            </button>
+                            <a href="@Url.Content($"~/Rol/AsignarAcciones?idRol={rol.IdRol}")"
+                               class="btn btn-sm btn-outline-primary"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="Permisos por acción">
+                                <i class="bi bi-shield-check"></i>
+                            </a>
+                        }
                     </td>
                 </tr>
                 index++;

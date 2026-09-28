@@ -22,6 +22,7 @@ namespace SASI.Servicios
         private readonly IUsuarioSistemaServicio _usuarioSistemaServicio;
         private readonly IOficinaServicio _oficinaServicio;
         private readonly IObjetoServicio _objetoServicio;
+        private readonly IPermisoServicio _permisoServicio;
         private readonly SasiDbContext _sasiDbContext;
 
         public AutenticacionServicio(
@@ -30,6 +31,7 @@ namespace SASI.Servicios
             IUsuarioSistemaServicio usuarioSistemaServicio,
             IOficinaServicio oficinaServicio,
             IObjetoServicio objetoServicio,
+            IPermisoServicio permisoServicio,
             SasiDbContext sasiDbContext)
         {
             _userManager = userManager;
@@ -37,6 +39,7 @@ namespace SASI.Servicios
             _usuarioSistemaServicio = usuarioSistemaServicio;
             _oficinaServicio = oficinaServicio;
             _objetoServicio = objetoServicio;
+            _permisoServicio = permisoServicio;
             _sasiDbContext = sasiDbContext;
         }
 
@@ -132,7 +135,9 @@ namespace SASI.Servicios
                 })
                 .ToList();
 
-            var sistemasEstructurados = ConstruirSistemasEstructurados(sistemasYRoles, menusPadreGlobales);
+            var permisosPorRol = await ConstruirMapaPermisosAsync(sistemasYRoles);
+
+            var sistemasEstructurados = ConstruirSistemasEstructurados(sistemasYRoles, menusPadreGlobales, permisosPorRol);
 
             return new
             {
@@ -174,6 +179,8 @@ namespace SASI.Servicios
                 oficina = await _oficinaServicio.ObtenerPorIdAsync(user.IdOficina.Value);
             }
 
+            var permisosPorRol = await ConstruirMapaPermisosAsync(sistemasYRoles);
+
             var sistemasEstructurados = sistemasYRoles
                 .GroupBy(x => new { x.SistemaId, x.SistemaNombre, x.SistemaActivo })
                 .Select(g => new
@@ -197,7 +204,8 @@ namespace SASI.Servicios
                             icono = o.Icono,
                             activo = o.Activo,
                             orden = o.Orden,
-                            idPadre = o.IdPadre
+                            idPadre = o.IdPadre,
+                            acciones = permisosPorRol.GetValueOrDefault(r.RolId)?.GetValueOrDefault(o.IdObjeto) ?? new List<string>()
                         }).ToList()
                     }).ToList()
                 }).ToList();
@@ -416,7 +424,22 @@ namespace SASI.Servicios
             return Convert.ToBase64String(bytes);
         }
 
-        private static List<object> ConstruirSistemasEstructurados(List<UsuarioSistemaRolDto> sistemasYRoles, List<ObjetoDto> menusPadreGlobales)
+        private async Task<Dictionary<int, Dictionary<int, List<string>>>> ConstruirMapaPermisosAsync(List<UsuarioSistemaRolDto> sistemasYRoles)
+        {
+            var resultado = new Dictionary<int, Dictionary<int, List<string>>>();
+
+            foreach (var rolId in sistemasYRoles.Select(sr => sr.RolId).Distinct())
+            {
+                resultado[rolId] = await _permisoServicio.ObtenerPermisosPorRolAsync(rolId);
+            }
+
+            return resultado;
+        }
+
+        private static List<object> ConstruirSistemasEstructurados(
+            List<UsuarioSistemaRolDto> sistemasYRoles,
+            List<ObjetoDto> menusPadreGlobales,
+            Dictionary<int, Dictionary<int, List<string>>> permisosPorRol)
         {
             return sistemasYRoles
                 .GroupBy(x => new { x.SistemaId, x.SistemaNombre, x.SistemaActivo })
@@ -457,7 +480,8 @@ namespace SASI.Servicios
                                 icono = o.Icono,
                                 activo = o.Activo,
                                 orden = o.Orden,
-                                idPadre = o.IdPadre
+                                idPadre = o.IdPadre,
+                                acciones = permisosPorRol.GetValueOrDefault(r.RolId)?.GetValueOrDefault(o.IdObjeto) ?? new List<string>()
                             })
                             .ToList();
 

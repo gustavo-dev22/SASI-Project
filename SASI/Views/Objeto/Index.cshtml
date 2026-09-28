@@ -1,6 +1,8 @@
 ﻿@model X.PagedList.IPagedList<SASI.Dominio.Modelo.Objeto>
 @using X.PagedList
 @using X.PagedList.Mvc.Core
+@using SASI.Dominio.Modelo
+@inject SASI.Servicios.IPermisoUsuarioServicio PermisoUsuario
 
 @{
     ViewBag.Title = "Objetos del Sistema";
@@ -9,9 +11,12 @@
 <h2 class="mt-5">Objetos del Sistema: <b><u>@ViewBag.Sistema.Nombre</u></b> <span class="text-muted fs-5">(@Model.TotalItemCount)</span></h2>
 
 <div class="d-flex justify-content-between align-items-center mb-3 mt-5">
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearObjetoModal" data-id-sistema="@ViewBag.Sistema.IdSistema" id="btnNuevoObjeto">
-        <i class="bi bi-plus-lg"></i> Nuevo Objeto
-    </button>
+    @if (PermisoUsuario.Tiene("Objeto", AccionesSistema.Crear))
+    {
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearObjetoModal" data-id-sistema="@ViewBag.Sistema.IdSistema" id="btnNuevoObjeto">
+            <i class="bi bi-plus-lg"></i> Nuevo Objeto
+        </button>
+    }
 
     <a href="@Url.Content("~/Sistema/Index")" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left"></i> Regresar
@@ -49,18 +54,24 @@
                     <td>@obj.Icono</td>
                     <td>@(obj.Activo ? "SI" : "NO")</td>
                     <td>
-                        <a href="javascript:;" class="btn btn-sm btn-outline-warning me-1 btnEditarObjeto" data-id="@obj.IdObjeto"
-                           data-bs-toggle="tooltip"
-                           data-bs-placement="top"
-                           title="Editar">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <button class="btn btn-sm btn-outline-secondary btnToggleObjeto me-1"
-                                data-id="@obj.IdObjeto"
-                                data-estado="@obj.Activo.ToString().ToLower()"
-                                data-bs-toggle="tooltip" title="Habilitar/Deshabilitar objeto">
-                            <i class="bi @(obj.Activo ? "bi-toggle-on text-success" : "bi-toggle-off text-muted")"></i>
-                        </button>
+                        @if (PermisoUsuario.Tiene("Objeto", AccionesSistema.Editar))
+                        {
+                            <a href="javascript:;" class="btn btn-sm btn-outline-warning me-1 btnEditarObjeto" data-id="@obj.IdObjeto"
+                               data-bs-toggle="tooltip"
+                               data-bs-placement="top"
+                               title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        }
+                        @if (PermisoUsuario.Tiene("Objeto", AccionesSistema.Bloquear))
+                        {
+                            <button class="btn btn-sm btn-outline-secondary btnToggleObjeto me-1"
+                                    data-id="@obj.IdObjeto"
+                                    data-estado="@obj.Activo.ToString().ToLower()"
+                                    data-bs-toggle="tooltip" title="Habilitar/Deshabilitar objeto">
+                                <i class="bi @(obj.Activo ? "bi-toggle-on text-success" : "bi-toggle-off text-muted")"></i>
+                            </button>
+                        }
                     </td>
                 </tr>
                 index++;

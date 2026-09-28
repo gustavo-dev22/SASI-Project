@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using SASI.Aplicacion.Servicios;
+using SASI.Authorization;
 using SASI.Dominio.Modelo;
 using SASI.Models;
 using SASI.Models.Requests;
@@ -21,6 +22,7 @@ namespace SASI.Controllers
             _sistemaServicio = sistemaServicio;
         }
 
+        [PermisoAccion("Objeto", AccionesSistema.Listar)]
         public async Task<IActionResult> Index(int idSistema, int? page)
         {
             int pageSize = 5;
@@ -45,6 +47,7 @@ namespace SASI.Controllers
         }
 
         [HttpGet]
+        [PermisoAccion("Objeto", AccionesSistema.Crear)]
         public async Task<IActionResult> Crear(int idSistema)
         {
             var objetosPadre = await _objetoServicio.ListarObjetosPadrePorSistemaAsync(idSistema);
@@ -64,6 +67,7 @@ namespace SASI.Controllers
         }
 
         [HttpPost]
+        [PermisoAccion("Objeto", AccionesSistema.Crear)]
         public async Task<IActionResult> Crear(ObjetoViewModel viewModel)
         {
             if (!ModelState.IsValid)
@@ -96,6 +100,7 @@ namespace SASI.Controllers
             return Json(new { success = true });
         }
 
+        [PermisoAccion("Objeto", AccionesSistema.Editar)]
         public async Task<IActionResult> Editar(int id)
         {
             var objeto = await _objetoServicio.ObtenerPorIdAsync(id);
@@ -120,6 +125,7 @@ namespace SASI.Controllers
         }
 
         [HttpPost]
+        [PermisoAccion("Objeto", AccionesSistema.Editar)]
         public async Task<IActionResult> Editar(ObjetoViewModel modelo)
         {
             if (!ModelState.IsValid)
@@ -147,6 +153,7 @@ namespace SASI.Controllers
         }
 
         [HttpPost]
+        [PermisoAccion("Objeto", AccionesSistema.Bloquear)]
         public async Task<IActionResult> CambiarEstado([FromBody] EliminarObjetoRequest request)
         {
             var resultado = await _objetoServicio.CambiarEstadoAsync(request.Id);

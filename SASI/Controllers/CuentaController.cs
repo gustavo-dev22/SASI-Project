@@ -19,6 +19,7 @@ namespace SASI.Controllers
         private readonly IPermisoUsuarioServicio _permisoUsuarioServicio;
         private readonly SsoServicio _ssoServicio;
         private readonly ISistemaServicio _sistemaServicio;
+        private readonly IUsuarioSistemaServicio _usuarioSistemaServicio;
         private readonly IAntiforgery Antiforgery;
 
         public CuentaController(
@@ -28,6 +29,7 @@ namespace SASI.Controllers
             IPermisoUsuarioServicio permisoUsuarioServicio,
             SsoServicio ssoServicio,
             ISistemaServicio sistemaServicio,
+            IUsuarioSistemaServicio usuarioSistemaServicio,
             IAntiforgery antiforgery)
         {
             _signInManager = signInManager;
@@ -36,6 +38,7 @@ namespace SASI.Controllers
             _permisoUsuarioServicio = permisoUsuarioServicio;
             _ssoServicio = ssoServicio;
             _sistemaServicio = sistemaServicio;
+            _usuarioSistemaServicio = usuarioSistemaServicio;
             Antiforgery = antiforgery;
         }
 
@@ -49,13 +52,36 @@ namespace SASI.Controllers
         {
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
+                // Sesión SASI ya activa: si la petición es SSO, se emite el code sin volver a pedir credenciales.
+                if (!string.IsNullOrWhiteSpace(client_id))
+                {
+                    var clienteActivo = await _ssoServicio.ObtenerClienteActivoAsync(client_id);
+                    if (clienteActivo != null && _ssoServicio.RedirectUriValida(clienteActivo, returnUrl))
+                    {
+                        var usuario = await _userManager.GetUserAsync(User);
+                        if (usuario != null &&
+                            await _usuarioSistemaServicio.UsuarioTieneRolActivoEnSistemaAsync(usuario.Id, clienteActivo.IdSistema))
+                        {
+                            var codigo = await _ssoServicio.CrearAuthCodeAsync(
+                                clienteActivo, usuario.Id, returnUrl!, code_challenge, code_challenge_method);
+
+                            var sep = returnUrl!.Contains('?') ? '&' : '?';
+                            var destino = $"{returnUrl}{sep}code={Uri.EscapeDataString(codigo)}";
+                            if (!string.IsNullOrEmpty(state))
+                                destino += $"&state={Uri.EscapeDataString(state)}";
+
+                            return Redirect(destino);
+                        }
+                    }
+                }
+
                 return RedirectToAction("Index", "Home");
             }
 
             if (!string.IsNullOrWhiteSpace(client_id))
             {
                 var cliente = await _ssoServicio.ObtenerClienteActivoAsync(client_id);
-                if (cliente == null || !SsoServicio.RedirectUriValida(cliente, returnUrl))
+                if (cliente == null || !_ssoServicio.RedirectUriValida(cliente, returnUrl))
                 {
                     ViewBag.ErrorSso = "Solicitud de acceso no válida.";
                     return View();
@@ -91,7 +117,7 @@ namespace SASI.Controllers
             if (!string.IsNullOrWhiteSpace(client_id))
             {
                 cliente = await _ssoServicio.ObtenerClienteActivoAsync(client_id);
-                if (cliente == null || !SsoServicio.RedirectUriValida(cliente, returnUrl))
+                if (cliente == null || !_ssoServicio.RedirectUriValida(cliente, returnUrl))
                     return Json(new { success = false, tipo = "credencialesInvalidas", mensaje = "Solicitud SSO no válida." });
             }
 

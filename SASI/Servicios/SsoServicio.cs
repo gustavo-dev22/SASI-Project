@@ -11,18 +11,23 @@ namespace SASI.Servicios
     {
         private readonly SasiDbContext _db;
         private readonly int _codeTtlSeconds;
+        private readonly bool _permitirLoopbackDesarrollo;
 
-        public SsoServicio(SasiDbContext db, IConfiguration config)
+        public SsoServicio(SasiDbContext db, IConfiguration config, IHostEnvironment env)
         {
             _db = db;
             _codeTtlSeconds = int.TryParse(config["Sso:CodeTtlSeconds"], out var ttl) ? ttl : 60;
+
+            // En desarrollo se aceptan callbacks en loopback (localhost en cualquier puerto)
+            // para no atar el SPA a un puerto fijo. En producción el match sigue siendo exacto.
+            _permitirLoopbackDesarrollo = env.IsDevelopment();
         }
 
         public Task<SistemaCliente?> ObtenerClienteActivoAsync(string clientId)
             => _db.SistemaClientes.AsNoTracking()
                 .FirstOrDefaultAsync(c => c.ClientId == clientId && c.Activo);
 
-        public static bool RedirectUriValida(SistemaCliente cliente, string? redirectUri)
+        public bool RedirectUriValida(SistemaCliente cliente, string? redirectUri)
         {
             if (string.IsNullOrWhiteSpace(redirectUri))
                 return false;
@@ -30,7 +35,21 @@ namespace SASI.Servicios
             var uris = (cliente.RedirectUris ?? string.Empty)
                 .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            return uris.Any(u => string.Equals(u, redirectUri, StringComparison.Ordinal));
+            if (uris.Any(u => string.Equals(u, redirectUri, StringComparison.Ordinal)))
+                return true;
+
+            return _permitirLoopbackDesarrollo && EsLoopbackLocal(redirectUri);
+        }
+
+        private static bool EsLoopbackLocal(string redirectUri)
+        {
+            if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri))
+                return false;
+
+            if (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+                return false;
+
+            return uri.Host is "localhost" or "127.0.0.1" or "::1" or "[::1]";
         }
 
         public async Task<string> CrearAuthCodeAsync(

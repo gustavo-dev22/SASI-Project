@@ -22,7 +22,10 @@
         <div class="card-body">
             @if (!objetos.Any())
             {
-                <div class="alert alert-warning mb-0">El sistema no tiene objetos registrados.</div>
+                <div class="alert alert-warning mb-0">
+                    El rol no tiene módulos (objetos con URL) asignados. Asigne primero los objetos
+                    al rol desde la opción <strong>Asignar Objetos</strong> para poder configurar sus acciones.
+                </div>
             }
             else
             {

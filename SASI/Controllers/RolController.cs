@@ -147,8 +147,11 @@ namespace SASI.Controllers
             if (rol == null)
                 return NotFound();
 
+            var idsAsignados = (await _rolServicio.ObtenerIdsObjetosPorRolAsync(idRol)).ToHashSet();
+
             var objetos = (await _rolServicio.ObtenerObjetosPorSistemaAsync(rol.IdSistema))
                 .Where(o => o.Activo
+                            && idsAsignados.Contains(o.IdObjeto)
                             && !string.IsNullOrWhiteSpace(o.Url)
                             && o.Url!.Trim() != "#")
                 .ToList();
@@ -180,7 +183,10 @@ namespace SASI.Controllers
             var catalogo = await _permisoServicio.ObtenerCatalogoAccionesAsync();
             var idListar = catalogo.FirstOrDefault(a => a.Codigo == AccionesSistema.Listar)?.IdAccion;
 
+            var idsAsignados = (await _rolServicio.ObtenerIdsObjetosPorRolAsync(request.IdRol)).ToHashSet();
+
             var asignaciones = (request.Permisos ?? new List<PermisoItemRequest>())
+                .Where(p => idsAsignados.Contains(p.IdObjeto))
                 .GroupBy(p => new { p.IdObjeto, p.IdAccion })
                 .Select(g => (g.Key.IdObjeto, g.Key.IdAccion))
                 .ToList();

@@ -86,13 +86,12 @@ namespace SASI.Controllers
                     return Redirect(destino);
                 }
 
-                // La sesión activa no sirve para el sistema solicitado: se cierra para permitir
-                // el ingreso con otra cuenta, en lugar de enviar a la consola SASI.
+                // La sesión activa no sirve para el sistema solicitado: se muestra el login
+                // para permitir el ingreso con otra cuenta (no se cierra la sesión aquí para
+                // no invalidar el token antiforgery del formulario recién renderizado).
                 _logger.LogWarning(
                     "SSO: la sesión activa ({Usuario}) no tiene rol en el sistema {SistemaId} (cliente {ClientId}).",
                     usuario?.UserName ?? "(usuario no resuelto)", clienteActivo.IdSistema, clienteActivo.ClientId);
-
-                await _signInManager.SignOutAsync();
 
                 var sistema = await _sistemaServicio.ObtenerPorIdAsync(clienteActivo.IdSistema);
                 ViewBag.NombreSistema = sistema?.Nombre;

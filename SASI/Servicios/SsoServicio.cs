@@ -52,6 +52,41 @@ namespace SASI.Servicios
             return uri.Host is "localhost" or "127.0.0.1" or "::1" or "[::1]";
         }
 
+        // Destino permitido para el post-logout: mismo origen que algún RedirectUri
+        // registrado por un cliente activo (evita open redirect).
+        public async Task<bool> ReturnUrlPermitidoAsync(string? url)
+        {
+            if (string.IsNullOrWhiteSpace(url) || !Uri.TryCreate(url, UriKind.Absolute, out var destino))
+                return false;
+
+            if (_permitirLoopbackDesarrollo && EsLoopbackLocal(url))
+                return true;
+
+            var listas = await _db.SistemaClientes.AsNoTracking()
+                .Where(c => c.Activo)
+                .Select(c => c.RedirectUris)
+                .ToListAsync();
+
+            foreach (var lista in listas)
+            {
+                var uris = (lista ?? string.Empty)
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                foreach (var u in uris)
+                {
+                    if (Uri.TryCreate(u, UriKind.Absolute, out var registrada) && MismoOrigen(registrada, destino))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool MismoOrigen(Uri a, Uri b)
+            => string.Equals(a.Scheme, b.Scheme, StringComparison.OrdinalIgnoreCase)
+               && string.Equals(a.Host, b.Host, StringComparison.OrdinalIgnoreCase)
+               && a.Port == b.Port;
+
         public async Task<string> CrearAuthCodeAsync(
             SistemaCliente cliente,
             Guid usuarioId,

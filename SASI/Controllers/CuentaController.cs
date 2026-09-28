@@ -194,7 +194,7 @@ namespace SASI.Controllers
         [HttpGet]
         [HttpPost]
         [IgnoreAntiforgeryToken]
-        public async Task<IActionResult> Logout()
+        public async Task<IActionResult> Logout(string? returnUrl = null)
         {
             // Tolerante a sesion/cookie expirada: cierra sesion siempre, sin exigir token antiforgery.
             try
@@ -223,6 +223,11 @@ namespace SASI.Controllers
                     // sesion no disponible: no bloquear el logout
                 }
             }
+
+            // Cierre de sesión único (SSO): si el destino pertenece a un cliente registrado,
+            // se vuelve a él en lugar de la pantalla de login de SASI.
+            if (await _ssoServicio.ReturnUrlPermitidoAsync(returnUrl))
+                return Redirect(returnUrl!);
 
             return RedirectToAction("Login", "Cuenta");
         }

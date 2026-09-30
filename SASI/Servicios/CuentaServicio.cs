@@ -123,6 +123,58 @@ namespace SASI.Servicios
             return resultado;
         }
 
+        // Validación de credenciales para el flujo SSO: NO firma la cookie de la consola.
+        // La sesión SSO la establece el controlador en su propio esquema.
+        public async Task<CuentaLoginResult> LoginSsoAsync(string userName, string password, int sistemaId)
+        {
+            var user = await _userManager.FindByNameAsync(userName);
+
+            if (user == null || !user.Activo)
+            {
+                return new CuentaLoginResult { Success = false, Tipo = "credencialesInvalidas" };
+            }
+
+            var result = await _signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
+
+            if (!result.Succeeded)
+            {
+                var intentosRestantes = Math.Max(0, _userManager.Options.Lockout.MaxFailedAccessAttempts - user.AccessFailedCount);
+                return new CuentaLoginResult { Success = false, Tipo = "credencialesInvalidas", IntentosRestantes = intentosRestantes };
+            }
+
+            if (!await _usuarioSistemaServicio.UsuarioTieneRolActivoEnSistemaAsync(user.Id, sistemaId))
+            {
+                return new CuentaLoginResult { Success = false, Tipo = "credencialesInvalidas" };
+            }
+
+            user.IntentosFallidosConsecutivos = 0;
+            await _userManager.UpdateAsync(user);
+
+            var resultado = new CuentaLoginResult { Success = true, UserId = user.Id };
+
+            if (user.DebeCambiarPassword)
+            {
+                resultado.Tipo = "cambioPasswordObligatorio";
+                resultado.RequiereCambioPassword = true;
+                return resultado;
+            }
+
+            if (user.FechaUltimoCambioPassword.HasValue)
+            {
+                var diasDesdeCambio = (DateTime.UtcNow - user.FechaUltimoCambioPassword.Value).TotalDays;
+                var diasRestantes = _diasVencimientoPassword - (int)diasDesdeCambio;
+                if (diasDesdeCambio >= _diasVencimientoPassword)
+                {
+                    resultado.Tipo = "cambioPasswordObligatorio";
+                    resultado.PasswordVencida = true;
+                    return resultado;
+                }
+                resultado.DiasRestantesPassword = diasRestantes;
+            }
+
+            return resultado;
+        }
+
         public Task<List<MenuItemViewModel>> SeleccionarRolAsync(Guid userId, int rolId)
             => SeleccionarRolAsync(userId, rolId, _sistemaId);
 

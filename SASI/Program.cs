@@ -199,6 +199,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
+    })
+    // Sesión SSO independiente de la consola SASI. SameSite=Lax permite enviar la
+    // cookie en el redirect cross-site al login (necesario en producción).
+    .AddCookie(SasiAuthSchemes.Sso, options =>
+    {
+        options.Cookie.Name = SasiAuthSchemes.SsoCookieName;
+        options.Cookie.Path = "/SASI";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
     });
 
 builder.Services.AddScoped<IAuthorizationHandler, AccesoModuloHandler>();

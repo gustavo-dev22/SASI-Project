@@ -148,7 +148,13 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.IsEssential = true;
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Strict;
+    // SameSite=Lax (no Strict): el login SSO se alcanza por navegación cross-site
+    // desde los sistemas consumidores (p. ej. SPA en otro puerto/esquema). Con
+    // Strict la cookie .SASI.Auth NO se enviaba en el GET, por lo que el token
+    // antiforgery se generaba sin usuario; en cambio el POST AJAX (same-site) sí
+    // enviaba la cookie y el antiforgery fallaba con 400. Lax mantiene la
+    // protección CSRF y envía la identidad de forma consistente en ambos pasos.
+    options.Cookie.SameSite = SameSiteMode.Lax;
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.SlidingExpiration = true;
 

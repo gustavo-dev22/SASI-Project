@@ -627,7 +627,18 @@
             overlay.style.display = "flex";
             card.classList.add("blurred");
 
-            // Enviar los datos vía AJAX
+            // Se obtiene un token antiforgery fresco antes de enviar. Con SSO la
+            // pagina se alcanza por navegacion cross-site y la cookie
+            // `.SASI.Antiforgery` puede quedar desincronizada respecto al token
+            // renderizado (varias pestanas, sesion previa, cache), lo que provoca
+            // 400 en el POST. Pedir el token por AJAX garantiza que token y cookie
+            // correspondan al mismo estado en el momento del envio.
+            $.get('@Url.Content("~/Cuenta/ObtenerTokenAntiForgery")')
+                .always(function (respuesta) {
+                    const tokenAntiForgery = (respuesta && respuesta.token)
+                        ? respuesta.token
+                        : $('input[name="__RequestVerificationToken"]').val();
+
             $.ajax({
                 url: '@Url.Content("~/Cuenta/Login")',
                 type: 'POST',
@@ -639,7 +650,7 @@
                     state: $('input[name="state"]').val(),
                     code_challenge: $('input[name="code_challenge"]').val(),
                     code_challenge_method: $('input[name="code_challenge_method"]').val(),
-                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                    __RequestVerificationToken: tokenAntiForgery
                 },
                 success: function (data) {
                     overlay.style.display = "none";
@@ -730,6 +741,7 @@
                     });
                 }
             });
+                });
         });
     </script>
 

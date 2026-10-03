@@ -2,13 +2,29 @@
     ViewData["Title"] = "Iniciar sesión";
     Layout = "_LayoutLogin";
 
-    var nombreSistema = ViewBag.NombreSistema as string;
-    var tituloFormulario = !string.IsNullOrEmpty(nombreSistema)
-        ? $"Acceso al sistema {nombreSistema}"
-        : "Inicia sesión en SASI";
-    var subtituloFormulario = !string.IsNullOrEmpty(nombreSistema)
-        ? "Usa tus credenciales institucionales para continuar."
-        : "Plataforma de administración de sistemas de información.";
+    var nombreSistema = (ViewBag.NombreSistema as string)?.Trim();
+
+    var tituloFormulario = "Inicia sesión en SASI";
+    var subtituloFormulario = "Plataforma de administración de sistemas de información.";
+
+    if (!string.IsNullOrEmpty(nombreSistema))
+    {
+        // Evita la repetición "Acceso al sistema Sistema de ...": la mayoría de los
+        // nombres en SASI ya empiezan por "Sistema", así que se integra al texto
+        // sin duplicar la palabra ("Acceso al sistema de Comité de Aula").
+        var nombre = nombreSistema;
+
+        if (nombre.StartsWith("Sistema de ", StringComparison.OrdinalIgnoreCase))
+            tituloFormulario = $"Acceso al sistema de {nombre.Substring("Sistema de ".Length)}";
+        else if (nombre.StartsWith("Sistema ", StringComparison.OrdinalIgnoreCase))
+            tituloFormulario = $"Acceso al sistema {nombre.Substring("Sistema ".Length)}";
+        else if (nombre.StartsWith("Sistema", StringComparison.OrdinalIgnoreCase))
+            tituloFormulario = nombre;
+        else
+            tituloFormulario = $"Acceso al sistema {nombre}";
+
+        subtituloFormulario = "Usa tus credenciales institucionales para continuar.";
+    }
 }
 
 @section Styles {

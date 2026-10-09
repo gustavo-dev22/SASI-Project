@@ -248,6 +248,17 @@ namespace SASI.Controllers
         [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Logout(string? returnUrl = null)
         {
+            // Elimina posibles cookies SSO residuales en otras rutas (p. ej. la raíz),
+            // además de la que cierra el esquema SSO (path=/SASI), para garantizar el
+            // cierre de sesión en todos los escenarios.
+            Response.Cookies.Delete(SasiAuthSchemes.SsoCookieName, new CookieOptions
+            {
+                Path = "/",
+                Secure = true,
+                HttpOnly = true,
+                SameSite = SameSiteMode.Lax
+            });
+
             // Cierre solicitado por una app consumidora: termina solo la sesión SSO,
             // dejando intacta la sesión de la consola SASI.
             if (await _ssoServicio.ReturnUrlPermitidoAsync(returnUrl))

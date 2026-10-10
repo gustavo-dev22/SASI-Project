@@ -22,6 +22,7 @@ using SASI.Logging;
 using SASI.Middleware;
 using SASI.Servicios;
 using Serilog;
+using Serilog.Events;
 using SistemaConvocatorias.Infraestructura.Datos;
 using System.Text;
 
@@ -32,6 +33,9 @@ Directory.CreateDirectory(Path.Combine(builder.Environment.ContentRootPath, "Log
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
     .WriteTo.Console()
     .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
     .Destructure.With<PiiDestructuringPolicy>()

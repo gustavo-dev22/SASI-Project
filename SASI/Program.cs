@@ -321,28 +321,36 @@ builder.Services.Configure<ConfiguracionSistemaSASI>(
 
 var app = builder.Build();
 
-// Aplica migraciones (con reconciliación) y siembra los clientes SSO declarados en
-// configuración en TODOS los entornos. Antes solo corría en Development, por lo que
-// los despliegues a producción quedaban con el esquema desactualizado (p. ej. la tabla
-// RolObjetoAccion), provocando errores en runtime. El try/catch evita que un fallo de
-// BD impida el arranque del sitio; el error queda registrado en el log.
-try
+// Migraciones/seed con reconciliación: se ejecutan automáticamente solo en Development.
+// En producción quedan deshabilitadas por defecto (Database:ApplyMigrationsOnStartup=false)
+// para que el esquema se actualice de forma controlada y no en cada arranque (criterio de
+// la auditoría). Para aplicarlas puntualmente en producción, defina la variable de entorno
+// Database__ApplyMigrationsOnStartup=true, reinicie y luego vuelva a false.
+var aplicarMigraciones = app.Environment.IsDevelopment()
+    || builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup");
+
+if (aplicarMigraciones)
 {
-    using var scope = app.Services.CreateScope();
+    // El try/catch evita que un fallo de BD impida el arranque del sitio;
+    // el error queda registrado en el log.
+    try
+    {
+        using var scope = app.Services.CreateScope();
 
-    var sasiDbContext = scope.ServiceProvider.GetRequiredService<SasiDbContext>();
-    await MigracionesConReconciliacion.AplicarAsync(sasiDbContext, "SASI", app.Logger);
+        var sasiDbContext = scope.ServiceProvider.GetRequiredService<SasiDbContext>();
+        await MigracionesConReconciliacion.AplicarAsync(sasiDbContext, "SASI", app.Logger);
 
-    await SsoClienteSeeder.SembrarAsync(sasiDbContext, app.Configuration, app.Logger);
+        await SsoClienteSeeder.SembrarAsync(sasiDbContext, app.Configuration, app.Logger);
 
-    var identityDbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-    await MigracionesConReconciliacion.AplicarAsync(identityDbContext, "Identity", app.Logger);
-}
-catch (Exception ex)
-{
-    app.Logger.LogError(ex,
-        "No se pudieron aplicar las migraciones/seed al iniciar. La aplicación continuará; " +
-        "verifique la cadena de conexión y los permisos del usuario de BD.");
+        var identityDbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        await MigracionesConReconciliacion.AplicarAsync(identityDbContext, "Identity", app.Logger);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex,
+            "No se pudieron aplicar las migraciones/seed al iniciar. La aplicación continuará; " +
+            "verifique la cadena de conexión y los permisos del usuario de BD.");
+    }
 }
 
 //using (var scope = app.Services.CreateScope())

@@ -324,7 +324,7 @@ namespace SASI.Servicios
                 await _usuarioSistemaServicio.AsignarUsuarioASistemaAsync(
                     asignacion.UsuarioId.ToString(), asignacion.SistemaId, asignacion.RolId, asignacion.EsPrincipal);
 
-                return (true, new { success = true, userId = usuario.Id, contrasenaTemporal }, null, null);
+                return (true, new { success = true, userId = usuario.Id, userName = usuario.UserName, email = usuario.Email, contrasenaTemporal }, null, null);
             }
             catch (Exception)
             {

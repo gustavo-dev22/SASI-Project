@@ -23,7 +23,7 @@ namespace SASI.Controllers
         }
 
         [PermisoAccion("Objeto", AccionesSistema.Listar)]
-        public async Task<IActionResult> Index(int idSistema, int? page)
+        public async Task<IActionResult> Index(int idSistema, int? page, string? tipo)
         {
             int pageSize = 5;
             int pageNumber = page ?? 1;
@@ -38,10 +38,18 @@ namespace SASI.Controllers
 
             var objetos = await _objetoServicio.ObtenerPorSistemaAsync(idSistema);
 
+            if (!string.IsNullOrWhiteSpace(tipo))
+            {
+                objetos = objetos
+                    .Where(o => string.Equals(o.Tipo, tipo, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
             var pagedObjetos = objetos.ToPagedList(pageNumber, pageSize);
 
             ViewBag.PageNumber = pageNumber;
             ViewBag.PageSize = pageSize;
+            ViewBag.Tipo = tipo;
 
             return View(pagedObjetos);
         }

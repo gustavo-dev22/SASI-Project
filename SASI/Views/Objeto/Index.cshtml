@@ -6,17 +6,44 @@
 
 @{
     ViewBag.Title = "Objetos del Sistema";
+    var tipoActual = ViewBag.Tipo as string ?? string.Empty;
+    var opcionesTipo = new (string Valor, string Texto)[]
+    {
+        ("", "Todos"),
+        ("Menu", "Menú"),
+        ("Submenu", "Submenú")
+    };
 }
 
 <h2 class="mt-5">Objetos del Sistema: <b><u>@ViewBag.Sistema.Nombre</u></b> <span class="text-muted fs-5">(@Model.TotalItemCount)</span></h2>
 
-<div class="d-flex justify-content-between align-items-center mb-3 mt-5">
-    @if (PermisoUsuario.Tiene("Objeto", AccionesSistema.Crear))
-    {
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearObjetoModal" data-id-sistema="@ViewBag.Sistema.IdSistema" id="btnNuevoObjeto">
-            <i class="bi bi-plus-lg"></i> Nuevo Objeto
-        </button>
-    }
+<div class="d-flex justify-content-between align-items-center mb-3 mt-5 gap-2 flex-wrap">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        @if (PermisoUsuario.Tiene("Objeto", AccionesSistema.Crear))
+        {
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearObjetoModal" data-id-sistema="@ViewBag.Sistema.IdSistema" id="btnNuevoObjeto">
+                <i class="bi bi-plus-lg"></i> Nuevo Objeto
+            </button>
+        }
+
+        <form method="get" asp-action="Index" class="d-flex align-items-center gap-2 mb-0">
+            <input type="hidden" name="idSistema" value="@ViewBag.Sistema.IdSistema" />
+            <label class="form-label mb-0 text-muted">Tipo:</label>
+            <select name="tipo" class="form-select form-select-sm" style="width:160px;" onchange="this.form.submit()">
+                @foreach (var opcion in opcionesTipo)
+                {
+                    if (string.Equals(tipoActual, opcion.Valor, StringComparison.OrdinalIgnoreCase))
+                    {
+                        <option value="@opcion.Valor" selected>@opcion.Texto</option>
+                    }
+                    else
+                    {
+                        <option value="@opcion.Valor">@opcion.Texto</option>
+                    }
+                }
+            </select>
+        </form>
+    </div>
 
     <a href="@Url.Content("~/Sistema/Index")" class="btn btn-outline-secondary">
         <i class="bi bi-arrow-left"></i> Regresar
@@ -29,6 +56,7 @@
             <th style="width: 50px;">#</th>
             <th>Nombre</th>
             <th>Tipo</th>
+            <th style="width: 80px;">Orden</th>
             <th>URL</th>
             <th>Título</th>
             <th>Icono</th>
@@ -49,6 +77,7 @@
                     <td style="font-weight:bold">@index</td>
                     <td>@obj.Nombre</td>
                     <td>@obj.Tipo</td>
+                    <td>@obj.Orden</td>
                     <td>@obj.Url</td>
                     <td>@obj.Titulo</td>
                     <td>@obj.Icono</td>
@@ -80,7 +109,7 @@
         else
         {
             <tr>
-                <td colspan="7" class="text-center text-muted fst-italic">No hay objetos registrados para este sistema.</td>
+                <td colspan="8" class="text-center text-muted fst-italic">No hay objetos registrados para este sistema.</td>
             </tr>
         }
     </tbody>
@@ -88,7 +117,7 @@
 
 <!-- Controles de paginación -->
 <div class="d-flex justify-content-center">
-    @Html.PagedListPager(Model, page => Url.Action("Index", new { idSistema = ViewBag.Sistema.IdSistema, page }),
+    @Html.PagedListPager(Model, page => Url.Action("Index", new { idSistema = ViewBag.Sistema.IdSistema, page, tipo = ViewBag.Tipo }),
     new PagedListRenderOptions
     {
         DisplayLinkToFirstPage = PagedListDisplayMode.Always,

@@ -50,6 +50,13 @@
                         <button class="btn btn-sm btn-info" onclick="verSistemas('@u.Id')">
                             <i class="bi bi-list-check"></i>
                         </button>
+
+                        @if (ViewBag.EsAdmin == true)
+                        {
+                            <button class="btn btn-sm btn-danger ms-1" onclick="restablecerPassword('@u.Id')" title="Restablecer contraseña">
+                                <i class="bi bi-key-fill"></i>
+                            </button>
+                        }
                     </td>
                 </tr>
             }

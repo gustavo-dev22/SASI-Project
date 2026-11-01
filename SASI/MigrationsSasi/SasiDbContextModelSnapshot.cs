@@ -930,6 +930,83 @@ namespace SASI.MigrationsSasi
                     b.ToTable("SolicitudAcceso", (string)null);
                 });
 
+            modelBuilder.Entity("SASI.Dominio.Modelo.SolicitudRestablecimientoPassword", b =>
+                {
+                    b.Property<int>("IdSolicitud")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdSolicitud"));
+
+                    b.Property<string>("AtendidoPor")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("AuditFechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("AuditFechaModificacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AuditUsuarioCreacion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AuditUsuarioModificacion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClientId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ComentarioRespuesta")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FechaRespuesta")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaSolicitud")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Identificador")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpCreacion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpModificacion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Mensaje")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("NombreCompleto")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("SistemaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("IdSolicitud");
+
+                    b.HasIndex("Estado");
+
+                    b.HasIndex("FechaSolicitud");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("SolicitudRestablecimientoPassword", (string)null);
+                });
+
             modelBuilder.Entity("SASI.Dominio.Modelo.Usuario", b =>
                 {
                     b.Property<Guid>("IdUsuario")

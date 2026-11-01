@@ -519,6 +519,13 @@
                     </div>
                 </div>
 
+                <div class="text-end mb-3">
+                    <a href="@Url.Action("OlvidePassword", "Cuenta", new { client_id = ViewBag.ClientId, returnUrl = ViewData["ReturnUrl"] })"
+                       class="small text-decoration-none">
+                        ¿Olvidaste tu contraseña?
+                    </a>
+                </div>
+
                 @if (!ViewData.ModelState.IsValid)
                 {
                     <div class="auth-alert">

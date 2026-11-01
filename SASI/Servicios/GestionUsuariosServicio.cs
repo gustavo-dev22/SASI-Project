@@ -67,18 +67,18 @@ namespace SASI.Servicios
             return new StaticPagedList<ApplicationUser>(usuarios, page, pageSize, total);
         }
 
-        public async Task<(bool Exito, string Mensaje)> CrearAsync(NuevoUsuarioRequest dto, string usuarioCreacion, string ip)
+        public async Task<(bool Exito, string Mensaje, string? ContrasenaTemporal)> CrearAsync(NuevoUsuarioRequest dto, string usuarioCreacion, string ip)
         {
             if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.UserName) ||
                 string.IsNullOrWhiteSpace(dto.NombreCompleto))
             {
-                return (false, "Todos los campos son obligatorios.");
+                return (false, "Todos los campos son obligatorios.", null);
             }
 
             var existe = await _userManager.FindByEmailAsync(dto.Email);
             if (existe != null)
             {
-                return (false, "El correo ya está registrado.");
+                return (false, "El correo ya está registrado.", null);
             }
 
             var usuario = new ApplicationUser
@@ -97,11 +97,12 @@ namespace SASI.Servicios
                 LockoutEnabled = true
             };
 
-            var resultado = await _userManager.CreateAsync(usuario, PasswordGenerator.GenerarContrasenaTemporal());
+            var contrasenaTemporal = PasswordGenerator.GenerarContrasenaTemporal();
+            var resultado = await _userManager.CreateAsync(usuario, contrasenaTemporal);
 
             return resultado.Succeeded
-                ? (true, "Usuario registrado correctamente.")
-                : (false, "Error: " + string.Join("; ", resultado.Errors.Select(e => e.Description)));
+                ? (true, "Usuario registrado correctamente.", contrasenaTemporal)
+                : (false, "Error: " + string.Join("; ", resultado.Errors.Select(e => e.Description)), null);
         }
 
         public Task<ApplicationUser?> ObtenerAsync(string id)

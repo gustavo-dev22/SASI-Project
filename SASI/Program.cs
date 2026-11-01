@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
@@ -25,6 +26,7 @@ using Serilog;
 using Serilog.Events;
 using SistemaConvocatorias.Infraestructura.Datos;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -116,6 +118,7 @@ builder.Services.AddScoped<GestionUsuariosServicio>();
 builder.Services.AddScoped<IDashboardServicio, DashboardServicio>();
 builder.Services.AddScoped<ISoporteServicio, SoporteServicio>();
 builder.Services.AddScoped<IReporteServicio, ReporteServicio>();
+builder.Services.AddScoped<ISolicitudPasswordServicio, SolicitudPasswordServicio>();
 
 /*builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(@"C:\claveproteccion"))
@@ -276,6 +279,22 @@ builder.Services.AddSession(options =>
     options.Cookie.SameSite = SameSiteMode.Strict;
 });
 
+// Limita los intentos de solicitud de restablecimiento de contraseña por IP.
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("olvide-password", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "desconocida",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0
+            }));
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
 builder.Services.AddEndpointsApiExplorer();
 
 if (builder.Environment.IsDevelopment())
@@ -397,6 +416,7 @@ app.UseCors(CorsPolicyName);
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseRateLimiter();
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();

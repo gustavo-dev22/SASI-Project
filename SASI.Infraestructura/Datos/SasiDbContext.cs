@@ -43,6 +43,7 @@ namespace SistemaConvocatorias.Infraestructura.Datos
         public DbSet<RolObjetoAccion> RolObjetoAcciones { get; set; }
         public DbSet<SistemaCliente> SistemaClientes { get; set; }
         public DbSet<AuthCode> AuthCodes { get; set; }
+        public DbSet<SolicitudRestablecimientoPassword> SolicitudesPassword { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -294,6 +295,14 @@ namespace SistemaConvocatorias.Infraestructura.Datos
             modelBuilder.Entity<AuthCode>().HasIndex(a => a.CodeHash).IsUnique();
             modelBuilder.Entity<AuthCode>().HasIndex(a => a.UsuarioId);
             modelBuilder.Entity<AuthCode>().HasIndex(a => a.ExpiraUtc);
+
+            // ----- Recuperación de contraseña (asistida por administrador) -----
+
+            modelBuilder.Entity<SolicitudRestablecimientoPassword>().ToTable("SolicitudRestablecimientoPassword");
+            modelBuilder.Entity<SolicitudRestablecimientoPassword>().HasKey(s => s.IdSolicitud);
+            modelBuilder.Entity<SolicitudRestablecimientoPassword>().HasIndex(s => s.Estado);
+            modelBuilder.Entity<SolicitudRestablecimientoPassword>().HasIndex(s => s.UsuarioId);
+            modelBuilder.Entity<SolicitudRestablecimientoPassword>().HasIndex(s => s.FechaSolicitud);
 
             // Catálogo global fijo de acciones (seed).
             modelBuilder.Entity<Accion>().HasData(

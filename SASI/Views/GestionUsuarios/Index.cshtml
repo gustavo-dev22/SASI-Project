@@ -42,6 +42,17 @@
         <button type="button" class="btn btn-warning ms-2" data-bs-toggle="modal" data-bs-target="#modalCargaMasiva">
             <i class="bi bi-upload"></i> Carga Masiva
         </button>
+
+        @if (ViewBag.EsAdmin == true)
+        {
+            <button type="button" class="btn btn-outline-danger ms-2" onclick="location.href='@Url.Action("SolicitudesPassword", "GestionUsuarios")'">
+                <i class="bi bi-key-fill"></i> Solicitudes
+                @if ((int)(ViewBag.SolicitudesPendientes ?? 0) > 0)
+                {
+                    <span class="badge bg-danger">@ViewBag.SolicitudesPendientes</span>
+                }
+            </button>
+        }
     </div>
 </form>
 
@@ -251,6 +262,52 @@
         }
 
         let modoEdicion = false;
+
+        function mostrarPasswordTemporal(temporal) {
+            return Swal.fire({
+                title: 'Contraseña temporal',
+                html: `<p class="mb-2">Comunícala al usuario por un canal seguro. Deberá cambiarla al ingresar.</p>
+                       <div class="input-group">
+                         <input id="tempPass" class="form-control text-center fw-bold" readonly value="${temporal}" />
+                         <button class="btn btn-outline-primary" id="btnCopyTemp" type="button">Copiar</button>
+                       </div>`,
+                icon: 'success',
+                confirmButtonText: 'Listo',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    const btn = document.getElementById('btnCopyTemp');
+                    if (btn) {
+                        btn.addEventListener('click', () => {
+                            navigator.clipboard.writeText(temporal);
+                            btn.textContent = 'Copiado';
+                        });
+                    }
+                }
+            });
+        }
+
+        function restablecerPassword(usuarioId) {
+            Swal.fire({
+                title: 'Restablecer contraseña',
+                text: '¿Generar una contraseña temporal para este usuario? Se desbloqueará la cuenta y deberá cambiarla al ingresar.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Restablecer',
+                cancelButtonText: 'Cancelar'
+            }).then((r) => {
+                if (!r.isConfirmed) return;
+
+                $.post('@Url.Action("RestablecerPassword", "GestionUsuarios")', { usuarioId }, function (resp) {
+                    if (!resp.success) {
+                        Swal.fire('Error', resp.message || 'No se pudo restablecer la contraseña.', 'error');
+                        return;
+                    }
+                    mostrarPasswordTemporal(resp.temporal);
+                }).fail(function () {
+                    Swal.fire('Error', 'Ocurrió un error al restablecer la contraseña.', 'error');
+                });
+            });
+        }
 
         function editarUsuario(id) {
             modoEdicion = true;
@@ -731,6 +788,12 @@
 
                         setTimeout(() => {
                             $.post(url, datos, function (response) {
+                                if (response.success && response.temporal) {
+                                    $("#modalAgregarUsuario").modal("hide");
+                                    mostrarPasswordTemporal(response.temporal).then(() => location.reload());
+                                    return;
+                                }
+
                                 Swal.fire({
                                   icon: response.success ? "success" : "error",
                                   title: response.message,

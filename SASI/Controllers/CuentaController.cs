@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Newtonsoft.Json;
 using SASI.Aplicacion.Servicios;
 using SASI.Dominio.Modelo;
@@ -24,6 +25,7 @@ namespace SASI.Controllers
         private readonly IUsuarioSistemaServicio _usuarioSistemaServicio;
         private readonly IAntiforgery Antiforgery;
         private readonly ILogger<CuentaController> _logger;
+        private readonly ISolicitudPasswordServicio _solicitudPasswordServicio;
 
         public CuentaController(
             SignInManager<ApplicationUser> signInManager,
@@ -34,7 +36,8 @@ namespace SASI.Controllers
             ISistemaServicio sistemaServicio,
             IUsuarioSistemaServicio usuarioSistemaServicio,
             IAntiforgery antiforgery,
-            ILogger<CuentaController> logger)
+            ILogger<CuentaController> logger,
+            ISolicitudPasswordServicio solicitudPasswordServicio)
         {
             _logger = logger;
             _signInManager = signInManager;
@@ -45,6 +48,7 @@ namespace SASI.Controllers
             _sistemaServicio = sistemaServicio;
             _usuarioSistemaServicio = usuarioSistemaServicio;
             Antiforgery = antiforgery;
+            _solicitudPasswordServicio = solicitudPasswordServicio;
         }
 
         [HttpGet]
@@ -241,6 +245,65 @@ namespace SASI.Controllers
 
             var principal = await _signInManager.CreateUserPrincipalAsync(usuario);
             await HttpContext.SignInAsync(SasiAuthSchemes.Sso, principal);
+        }
+
+        // ===================== Recuperación de contraseña =====================
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> OlvidePassword(string? client_id = null, string? returnUrl = null)
+        {
+            var vm = new OlvidePasswordViewModel
+            {
+                ClientId = client_id,
+                ReturnUrl = returnUrl,
+                NombreSistema = await ObtenerNombreSistemaAsync(client_id)
+            };
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [AllowAnonymous]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("olvide-password")]
+        public async Task<IActionResult> OlvidePassword(OlvidePasswordViewModel modelo)
+        {
+            if (!ModelState.IsValid)
+            {
+                modelo.NombreSistema = await ObtenerNombreSistemaAsync(modelo.ClientId);
+                return View(modelo);
+            }
+
+            int? sistemaId = null;
+            if (!string.IsNullOrWhiteSpace(modelo.ClientId))
+            {
+                var cliente = await _ssoServicio.ObtenerClienteActivoAsync(modelo.ClientId);
+                sistemaId = cliente?.IdSistema;
+            }
+
+            // La respuesta es siempre genérica para no revelar si el usuario existe.
+            await _solicitudPasswordServicio.CrearSolicitudAsync(
+                modelo.Identificador, modelo.Mensaje, modelo.ClientId, sistemaId);
+
+            return RedirectToAction(nameof(OlvidePasswordConfirmacion));
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult OlvidePasswordConfirmacion() => View();
+
+        private async Task<string?> ObtenerNombreSistemaAsync(string? clientId)
+        {
+            if (string.IsNullOrWhiteSpace(clientId))
+                return null;
+
+            var cliente = await _ssoServicio.ObtenerClienteActivoAsync(clientId);
+            if (cliente == null)
+                return null;
+
+            var sistema = await _sistemaServicio.ObtenerPorIdAsync(cliente.IdSistema);
+            return sistema?.Nombre;
         }
 
         [HttpGet]

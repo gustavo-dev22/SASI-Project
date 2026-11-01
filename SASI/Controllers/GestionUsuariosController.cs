@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SASI.Authorization;
+using SASI.Dominio.Modelo;
 using SASI.Infraestructura.Identity;
+using SASI.Models;
 using SASI.Models.Requests;
 using SASI.Servicios;
 using X.PagedList;
@@ -11,14 +14,29 @@ namespace SASI.Controllers
     public class GestionUsuariosController : Controller
     {
         private readonly GestionUsuariosServicio _servicio;
+        private readonly ISolicitudPasswordServicio _solicitudPasswordServicio;
 
-        public GestionUsuariosController(GestionUsuariosServicio servicio)
+        public GestionUsuariosController(
+            GestionUsuariosServicio servicio,
+            ISolicitudPasswordServicio solicitudPasswordServicio)
         {
             _servicio = servicio;
+            _solicitudPasswordServicio = solicitudPasswordServicio;
         }
 
-        public IActionResult Index()
+        private bool EsAdministrador =>
+            User.IsInRole("Administrador") || User.IsInRole("Administrador de Seguridad");
+
+        private string UsuarioActual => User.Identity?.Name ?? "admin";
+
+        public async Task<IActionResult> Index()
         {
+            var esAdmin = EsAdministrador;
+            ViewBag.EsAdmin = esAdmin;
+            ViewBag.SolicitudesPendientes = esAdmin
+                ? await _solicitudPasswordServicio.ContarPendientesAsync()
+                : 0;
+
             return View(new StaticPagedList<ApplicationUser>(new List<ApplicationUser>(), 1, 10, 0));
         }
 
@@ -28,6 +46,7 @@ namespace SASI.Controllers
             var paged = await _servicio.BuscarAsync(filtro, page, 10);
 
             ViewBag.Filtro = filtro;
+            ViewBag.EsAdmin = EsAdministrador;
 
             return PartialView("_TablaUsuarios", paged);
         }
@@ -36,7 +55,7 @@ namespace SASI.Controllers
         public async Task<IActionResult> Crear([FromForm] NuevoUsuarioRequest dto)
         {
             var resultado = await _servicio.CrearAsync(dto, User.Identity?.Name ?? string.Empty, HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty);
-            return Json(new { success = resultado.Exito, message = resultado.Mensaje });
+            return Json(new { success = resultado.Exito, message = resultado.Mensaje, temporal = resultado.ContrasenaTemporal });
         }
 
         [HttpGet]
@@ -159,6 +178,57 @@ namespace SASI.Controllers
 
             var existentes = await _servicio.ValidarExistentesAsync(usuarios);
             return Ok(existentes);
+        }
+
+        // ===================== Restablecimiento de contraseña =====================
+
+        [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        [Authorize(Roles = RolesSasi.Administracion)]
+        public async Task<IActionResult> SolicitudesPassword()
+        {
+            var vm = new SolicitudesPasswordViewModel
+            {
+                Pendientes = await _solicitudPasswordServicio.ListarAsync(EstadoSolicitudPassword.Pendiente),
+                Atendidas = await _solicitudPasswordServicio.ListarAsync(EstadoSolicitudPassword.Atendida),
+                Rechazadas = await _solicitudPasswordServicio.ListarAsync(EstadoSolicitudPassword.Rechazada)
+            };
+
+            return View(vm);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = RolesSasi.Administracion)]
+        public async Task<IActionResult> RestablecerSolicitud(int idSolicitud)
+        {
+            var resultado = await _solicitudPasswordServicio.RestablecerSolicitudAsync(idSolicitud, UsuarioActual);
+            return Json(new
+            {
+                success = resultado.Exito,
+                message = resultado.Mensaje,
+                temporal = resultado.ContrasenaTemporal
+            });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = RolesSasi.Administracion)]
+        public async Task<IActionResult> RestablecerPassword(Guid usuarioId)
+        {
+            var resultado = await _solicitudPasswordServicio.RestablecerUsuarioAsync(usuarioId, UsuarioActual);
+            return Json(new
+            {
+                success = resultado.Exito,
+                message = resultado.Mensaje,
+                temporal = resultado.ContrasenaTemporal
+            });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = RolesSasi.Administracion)]
+        public async Task<IActionResult> RechazarSolicitud(int idSolicitud, string? comentario)
+        {
+            var resultado = await _solicitudPasswordServicio.RechazarSolicitudAsync(idSolicitud, UsuarioActual, comentario);
+            return Json(new { success = resultado.Exito, message = resultado.Mensaje });
         }
     }
 }

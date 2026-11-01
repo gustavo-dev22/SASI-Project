@@ -13,6 +13,9 @@ namespace SASI.Models
 
         public string? ClientId { get; set; }
         public string? ReturnUrl { get; set; }
+        public string? State { get; set; }
+        public string? CodeChallenge { get; set; }
+        public string? CodeChallengeMethod { get; set; }
         public string? NombreSistema { get; set; }
     }
 }

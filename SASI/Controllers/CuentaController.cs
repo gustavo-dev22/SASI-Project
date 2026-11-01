@@ -253,12 +253,20 @@ namespace SASI.Controllers
 
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> OlvidePassword(string? client_id = null, string? returnUrl = null)
+        public async Task<IActionResult> OlvidePassword(
+            string? client_id = null,
+            string? returnUrl = null,
+            string? state = null,
+            string? code_challenge = null,
+            string? code_challenge_method = null)
         {
             var vm = new OlvidePasswordViewModel
             {
                 ClientId = client_id,
                 ReturnUrl = returnUrl,
+                State = state,
+                CodeChallenge = code_challenge,
+                CodeChallengeMethod = code_challenge_method,
                 NombreSistema = await ObtenerNombreSistemaAsync(client_id)
             };
 
@@ -288,12 +296,35 @@ namespace SASI.Controllers
             await _solicitudPasswordServicio.CrearSolicitudAsync(
                 modelo.Identificador, modelo.Mensaje, modelo.ClientId, sistemaId);
 
-            return RedirectToAction(nameof(OlvidePasswordConfirmacion));
+            // Se conservan los parámetros SSO para que, tras la confirmación, el usuario
+            // vuelva al login de SASI dentro del contexto del sistema de origen.
+            return RedirectToAction(nameof(OlvidePasswordConfirmacion), new
+            {
+                client_id = modelo.ClientId,
+                returnUrl = modelo.ReturnUrl,
+                state = modelo.State,
+                code_challenge = modelo.CodeChallenge,
+                code_challenge_method = modelo.CodeChallengeMethod
+            });
         }
 
         [HttpGet]
         [AllowAnonymous]
-        public IActionResult OlvidePasswordConfirmacion() => View();
+        public IActionResult OlvidePasswordConfirmacion(
+            string? client_id = null,
+            string? returnUrl = null,
+            string? state = null,
+            string? code_challenge = null,
+            string? code_challenge_method = null)
+        {
+            ViewBag.ClientId = client_id;
+            ViewBag.ReturnUrl = returnUrl;
+            ViewBag.State = state;
+            ViewBag.CodeChallenge = code_challenge;
+            ViewBag.CodeChallengeMethod = code_challenge_method;
+
+            return View();
+        }
 
         private async Task<string?> ObtenerNombreSistemaAsync(string? clientId)
         {

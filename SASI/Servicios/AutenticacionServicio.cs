@@ -277,7 +277,14 @@ namespace SASI.Servicios
         public const string CodigoEmailExistente = "EMAIL_EXISTE";
         public const string CodigoAsignacionFallida = "ASIGNACION_FALLIDA";
 
-        public async Task<(bool Exito, object? Resultado, string? Error, string? Codigo)> CrearAlumnoAsync(NuevoUsuarioApiRequest dto)
+        public Task<(bool Exito, object? Resultado, string? Error, string? Codigo)> CrearAlumnoAsync(NuevoUsuarioApiRequest dto)
+            => CrearUsuarioSgaAsync(dto, 13);
+
+        public Task<(bool Exito, object? Resultado, string? Error, string? Codigo)> CrearApoderadoAsync(NuevoUsuarioApiRequest dto)
+            => CrearUsuarioSgaAsync(dto, 2051);
+
+        private async Task<(bool Exito, object? Resultado, string? Error, string? Codigo)> CrearUsuarioSgaAsync(
+            NuevoUsuarioApiRequest dto, int rolId)
         {
             var existe = await _userManager.FindByEmailAsync(dto.Email);
             if (existe != null)
@@ -308,7 +315,7 @@ namespace SASI.Servicios
                 {
                     UsuarioId = usuario.Id,
                     SistemaId = 14,
-                    RolId = 13,
+                    RolId = rolId,
                     FechaAsignacion = DateTime.Now,
                     Activo = true,
                     EsPrincipal = true
@@ -322,7 +329,7 @@ namespace SASI.Servicios
             catch (Exception)
             {
                 await _userManager.DeleteAsync(usuario);
-                return (false, null, "Usuario creado pero falló la asignación al sistema. La operación fue revertida.", CodigoAsignacionFallida);
+                return (false, null, "Usuario creado pero fallo la asignacion al sistema. La operacion fue revertida.", CodigoAsignacionFallida);
             }
         }
 

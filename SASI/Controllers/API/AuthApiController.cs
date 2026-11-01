@@ -22,19 +22,22 @@ namespace SASI.Controllers.API
         private readonly SsoServicio _ssoServicio;
         private readonly IUsuarioSistemaServicio _usuarioSistemaServicio;
         private readonly ISistemaServicio _sistemaServicio;
+        private readonly IConfiguration _configuration;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
             AutenticacionServicio autenticacionServicio,
             SsoServicio ssoServicio,
             IUsuarioSistemaServicio usuarioSistemaServicio,
-            ISistemaServicio sistemaServicio)
+            ISistemaServicio sistemaServicio,
+            IConfiguration configuration)
         {
             _userManager = userManager;
             _autenticacionServicio = autenticacionServicio;
             _ssoServicio = ssoServicio;
             _usuarioSistemaServicio = usuarioSistemaServicio;
             _sistemaServicio = sistemaServicio;
+            _configuration = configuration;
         }
 
         // Disponibilidad del servicio de autenticación. Permite a los sistemas consumidores
@@ -208,6 +211,29 @@ namespace SASI.Controllers.API
         public async Task<IActionResult> CrearAlumnoDesdeSga([FromBody] NuevoUsuarioApiRequest dto)
         {
             var resultado = await _autenticacionServicio.CrearAlumnoAsync(dto);
+
+            if (!resultado.Exito && resultado.Codigo == AutenticacionServicio.CodigoEmailExistente)
+                return Conflict(new { message = resultado.Error });
+
+            if (!resultado.Exito)
+                return BadRequest(new { success = false, message = resultado.Error });
+
+            return Ok(resultado.Resultado);
+        }
+
+        // Creacion de apoderados desde el portal SGA durante la activacion por enlace.
+        // Se protege con una clave interna porque el apoderado aun no tiene sesion SASI.
+        [HttpPost("sga/crear-apoderado")]
+        [AllowAnonymous]
+        public async Task<IActionResult> CrearApoderadoDesdeSga(
+            [FromBody] NuevoUsuarioApiRequest dto,
+            [FromHeader(Name = "X-SGA-Internal-Key")] string? internalKey)
+        {
+            var expected = _configuration["Sga:InternalKey"];
+            if (string.IsNullOrWhiteSpace(expected) || !string.Equals(expected, internalKey, StringComparison.Ordinal))
+                return Unauthorized(new { success = false, message = "Clave interna invalida." });
+
+            var resultado = await _autenticacionServicio.CrearApoderadoAsync(dto);
 
             if (!resultado.Exito && resultado.Codigo == AutenticacionServicio.CodigoEmailExistente)
                 return Conflict(new { message = resultado.Error });

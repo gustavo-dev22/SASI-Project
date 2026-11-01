@@ -595,6 +595,8 @@
 
 @section Scripts {
     <script>
+        const nombreSistemaAcceso = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(nombreSistema));
+
         document.getElementById("btnLogin").addEventListener("click", function (e) {
             e.preventDefault(); // Evitar envío tradicional
 
@@ -692,6 +694,18 @@
                                     icon: 'warning',
                                     title: 'Sin rol asignado',
                                     text: 'No tienes roles activos en SASI.',
+                                    confirmButtonText: 'Aceptar',
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                });
+                                break;
+                            case "sinAcceso":
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Sin acceso al sistema',
+                                    html: nombreSistemaAcceso
+                                        ? `Tu usuario no tiene acceso a <strong>${nombreSistemaAcceso.toUpperCase()}</strong>. Contacta al administrador.`
+                                        : 'Tu usuario no tiene acceso a este sistema. Contacta al administrador.',
                                     confirmButtonText: 'Aceptar',
                                     allowOutsideClick: false,
                                     allowEscapeKey: false

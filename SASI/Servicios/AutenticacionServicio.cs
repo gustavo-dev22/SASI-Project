@@ -43,7 +43,7 @@ namespace SASI.Servicios
             _sasiDbContext = sasiDbContext;
         }
 
-        public async Task<object?> LoginAsync(string userName, string password)
+        public async Task<object?> LoginAsync(string userName, string password, int? sistemaId = null)
         {
             var user = await _userManager.FindByNameAsync(userName);
 
@@ -99,6 +99,35 @@ namespace SASI.Servicios
             }
 
             await _userManager.ResetAccessFailedCountAsync(user);
+
+            // Si el consumidor indica el sistema destino, se valida la pertenencia.
+            // Sin este dato se conserva el comportamiento previo (sesión con todos sus sistemas).
+            if (sistemaId.HasValue &&
+                !await _usuarioSistemaServicio.UsuarioTieneRolActivoEnSistemaAsync(user.Id, sistemaId.Value))
+            {
+                var nombreSistema = await _sasiDbContext.Sistemas
+                    .AsNoTracking()
+                    .Where(s => s.IdSistema == sistemaId.Value)
+                    .Select(s => s.Nombre)
+                    .FirstOrDefaultAsync();
+
+                var mensaje = string.IsNullOrWhiteSpace(nombreSistema)
+                    ? "Su usuario no tiene acceso a este sistema."
+                    : nombreSistema.StartsWith("Sistema", StringComparison.OrdinalIgnoreCase)
+                        ? $"Su usuario no tiene acceso a {nombreSistema}."
+                        : $"Su usuario no tiene acceso al sistema {nombreSistema}.";
+
+                return new
+                {
+                    success = false,
+                    codigo = "SIN_ACCESO",
+                    message = mensaje,
+                    bloqueado = false,
+                    inactivo = false,
+                    sistemaId = sistemaId.Value,
+                    sistemaNombre = nombreSistema
+                };
+            }
 
             return await ConstruirRespuestaSesionAsync(user);
         }

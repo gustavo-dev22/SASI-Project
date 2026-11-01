@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SASI.Aplicacion.Servicios;
 using SASI.Authorization;
 using SASI.Infraestructura.Identity;
 using SASI.Models.Requests;
@@ -19,15 +20,21 @@ namespace SASI.Controllers.API
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly AutenticacionServicio _autenticacionServicio;
         private readonly SsoServicio _ssoServicio;
+        private readonly IUsuarioSistemaServicio _usuarioSistemaServicio;
+        private readonly ISistemaServicio _sistemaServicio;
 
         public AuthController(
             UserManager<ApplicationUser> userManager,
             AutenticacionServicio autenticacionServicio,
-            SsoServicio ssoServicio)
+            SsoServicio ssoServicio,
+            IUsuarioSistemaServicio usuarioSistemaServicio,
+            ISistemaServicio sistemaServicio)
         {
             _userManager = userManager;
             _autenticacionServicio = autenticacionServicio;
             _ssoServicio = ssoServicio;
+            _usuarioSistemaServicio = usuarioSistemaServicio;
+            _sistemaServicio = sistemaServicio;
         }
 
         // Disponibilidad del servicio de autenticación. Permite a los sistemas consumidores
@@ -40,7 +47,27 @@ namespace SASI.Controllers.API
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var resultado = await _autenticacionServicio.LoginAsync(request.UserName, request.Password);
+            int? sistemaId = request.SistemaId;
+
+            // Si viene client_id, se resuelve el sistema del cliente (tiene prioridad).
+            if (!string.IsNullOrWhiteSpace(request.ClientId))
+            {
+                var cliente = await _ssoServicio.ObtenerClienteActivoAsync(request.ClientId);
+                if (cliente == null)
+                {
+                    return Ok(new
+                    {
+                        success = false,
+                        codigo = "CLIENTE_INVALIDO",
+                        message = "Cliente no válido o inactivo.",
+                        bloqueado = false
+                    });
+                }
+
+                sistemaId = cliente.IdSistema;
+            }
+
+            var resultado = await _autenticacionServicio.LoginAsync(request.UserName, request.Password, sistemaId);
 
             if (resultado == null)
             {
@@ -73,6 +100,28 @@ namespace SASI.Controllers.API
 
             if (!canje.Exito)
                 return BadRequest(new { success = false, error = "invalid_grant", error_description = canje.Error });
+
+            // Endurecimiento: el usuario debe seguir teniendo acceso al sistema del cliente
+            // (cubre una revocación de rol entre la emisión del code y su canje).
+            if (!await _usuarioSistemaServicio.UsuarioTieneRolActivoEnSistemaAsync(canje.UsuarioId, canje.SistemaId))
+            {
+                var sistema = await _sistemaServicio.ObtenerPorIdAsync(canje.SistemaId);
+                var mensaje = sistema == null
+                    ? "Su usuario no tiene acceso a este sistema."
+                    : sistema.Nombre.StartsWith("Sistema", StringComparison.OrdinalIgnoreCase)
+                        ? $"Su usuario no tiene acceso a {sistema.Nombre}."
+                        : $"Su usuario no tiene acceso al sistema {sistema.Nombre}.";
+
+                return BadRequest(new
+                {
+                    success = false,
+                    codigo = "SIN_ACCESO",
+                    error = "access_denied",
+                    error_description = mensaje,
+                    sistemaId = canje.SistemaId,
+                    sistemaNombre = sistema?.Nombre
+                });
+            }
 
             var sesion = await _autenticacionServicio.EmitirSesionAsync(canje.UsuarioId);
             if (sesion == null)

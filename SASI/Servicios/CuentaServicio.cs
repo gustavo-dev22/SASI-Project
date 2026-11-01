@@ -70,7 +70,7 @@ namespace SASI.Servicios
             if (!tieneAccesoSASI)
             {
                 await _signInManager.SignOutAsync();
-                return new CuentaLoginResult { Success = false, Tipo = "credencialesInvalidas" };
+                return new CuentaLoginResult { Success = false, Tipo = "sinAcceso" };
             }
 
             user.IntentosFallidosConsecutivos = 0;
@@ -116,7 +116,7 @@ namespace SASI.Servicios
             if (menu == null)
             {
                 await _signInManager.SignOutAsync();
-                return new CuentaLoginResult { Success = false, Tipo = "credencialesInvalidas" };
+                return new CuentaLoginResult { Success = false, Tipo = "sinAcceso" };
             }
 
             resultado.Menu = menu;
@@ -144,7 +144,7 @@ namespace SASI.Servicios
 
             if (!await _usuarioSistemaServicio.UsuarioTieneRolActivoEnSistemaAsync(user.Id, sistemaId))
             {
-                return new CuentaLoginResult { Success = false, Tipo = "credencialesInvalidas" };
+                return new CuentaLoginResult { Success = false, Tipo = "sinAcceso" };
             }
 
             user.IntentosFallidosConsecutivos = 0;

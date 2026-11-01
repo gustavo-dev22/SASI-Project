@@ -113,7 +113,7 @@ namespace SASI.Servicios
             return code;
         }
 
-        public async Task<(bool Exito, string? Error, Guid UsuarioId)> CanjearAsync(
+        public async Task<(bool Exito, string? Error, Guid UsuarioId, int SistemaId)> CanjearAsync(
             string clientId,
             string? clientSecret,
             string code,
@@ -122,49 +122,49 @@ namespace SASI.Servicios
         {
             var cliente = await ObtenerClienteActivoAsync(clientId);
             if (cliente == null)
-                return (false, "client_id inválido o inactivo.", Guid.Empty);
+                return (false, "client_id inválido o inactivo.", Guid.Empty, 0);
 
             if (string.IsNullOrWhiteSpace(code))
-                return (false, "code requerido.", Guid.Empty);
+                return (false, "code requerido.", Guid.Empty, 0);
 
             if (!string.IsNullOrWhiteSpace(cliente.ClientSecretHash))
             {
                 if (string.IsNullOrWhiteSpace(clientSecret) || !ConstanteIgual(Hash(clientSecret), cliente.ClientSecretHash))
-                    return (false, "client_secret inválido.", Guid.Empty);
+                    return (false, "client_secret inválido.", Guid.Empty, 0);
             }
 
             var hash = Hash(code);
             var authCode = await _db.AuthCodes.FirstOrDefaultAsync(a => a.CodeHash == hash);
             if (authCode == null || authCode.ClientId != clientId)
-                return (false, "code inválido.", Guid.Empty);
+                return (false, "code inválido.", Guid.Empty, 0);
             if (authCode.UsadoUtc != null)
-                return (false, "code ya utilizado.", Guid.Empty);
+                return (false, "code ya utilizado.", Guid.Empty, authCode.SistemaId);
             if (authCode.ExpiraUtc < DateTime.UtcNow)
-                return (false, "code expirado.", Guid.Empty);
+                return (false, "code expirado.", Guid.Empty, authCode.SistemaId);
 
             if (!string.IsNullOrWhiteSpace(authCode.RedirectUri))
             {
                 if (string.IsNullOrWhiteSpace(redirectUri) || !string.Equals(authCode.RedirectUri, redirectUri, StringComparison.Ordinal))
-                    return (false, "redirect_uri no coincide.", Guid.Empty);
+                    return (false, "redirect_uri no coincide.", Guid.Empty, authCode.SistemaId);
             }
 
             if (cliente.RequierePkce)
             {
                 if (string.IsNullOrWhiteSpace(authCode.CodeChallenge))
-                    return (false, "PKCE requerido.", Guid.Empty);
+                    return (false, "PKCE requerido.", Guid.Empty, authCode.SistemaId);
                 if (string.IsNullOrWhiteSpace(codeVerifier))
-                    return (false, "code_verifier requerido.", Guid.Empty);
+                    return (false, "code_verifier requerido.", Guid.Empty, authCode.SistemaId);
 
                 var metodo = string.IsNullOrWhiteSpace(authCode.CodeChallengeMethod)
                     ? "S256"
                     : authCode.CodeChallengeMethod!.ToUpperInvariant();
 
                 if (metodo != "S256")
-                    return (false, "code_challenge_method no soportado.", Guid.Empty);
+                    return (false, "code_challenge_method no soportado.", Guid.Empty, authCode.SistemaId);
 
                 var esperado = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier)));
                 if (!ConstanteIgual(esperado, authCode.CodeChallenge!))
-                    return (false, "code_verifier inválido.", Guid.Empty);
+                    return (false, "code_verifier inválido.", Guid.Empty, authCode.SistemaId);
             }
 
             // Revocación atómica: un solo uso.
@@ -173,9 +173,9 @@ namespace SASI.Servicios
                 authCode.IdAuthCode);
 
             if (filas == 0)
-                return (false, "code ya utilizado.", Guid.Empty);
+                return (false, "code ya utilizado.", Guid.Empty, authCode.SistemaId);
 
-            return (true, null, authCode.UsuarioId);
+            return (true, null, authCode.UsuarioId, authCode.SistemaId);
         }
 
         private static string Hash(string valor)

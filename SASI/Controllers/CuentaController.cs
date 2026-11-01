@@ -147,9 +147,10 @@ namespace SASI.Controllers
 
             if (!resultado.Success)
             {
+                var tipo = string.IsNullOrWhiteSpace(resultado.Tipo) ? "credencialesInvalidas" : resultado.Tipo;
                 var respuesta = resultado.IntentosRestantes.HasValue
-                    ? (object)new { success = false, tipo = "credencialesInvalidas", intentosRestantes = resultado.IntentosRestantes }
-                    : new { success = false, tipo = "credencialesInvalidas" };
+                    ? (object)new { success = false, tipo, intentosRestantes = resultado.IntentosRestantes }
+                    : new { success = false, tipo };
                 return Json(respuesta);
             }
 
@@ -214,9 +215,10 @@ namespace SASI.Controllers
 
             if (!resultado.Success)
             {
+                var tipo = string.IsNullOrWhiteSpace(resultado.Tipo) ? "credencialesInvalidas" : resultado.Tipo;
                 var respuesta = resultado.IntentosRestantes.HasValue
-                    ? (object)new { success = false, tipo = "credencialesInvalidas", intentosRestantes = resultado.IntentosRestantes }
-                    : new { success = false, tipo = "credencialesInvalidas" };
+                    ? (object)new { success = false, tipo, intentosRestantes = resultado.IntentosRestantes }
+                    : new { success = false, tipo };
                 return Json(respuesta);
             }
 
